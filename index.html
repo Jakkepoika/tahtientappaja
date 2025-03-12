@@ -182,7 +182,7 @@ function loadAllAssets() {
         const tempAudio = new Audio();
         tempAudio.addEventListener('canplaythrough', assetLoaded, {once: true});
         tempAudio.addEventListener('error', assetLoaded, {once: true});
-        tempAudio.src = 'tappaja.mp3';
+        tempAudio.src = 'tappaja1.mp3';
     } catch (e) {
         console.error("Audio preload error:", e);
         assetLoaded(); // Count as loaded even if it fails
@@ -277,7 +277,7 @@ function showLoadingScreen() {
 function initializeMusic() {
     if (!backgroundMusic) {
         backgroundMusic = new Audio('');
-		backgroundMusic.src = 'tappaja.mp3';
+		backgroundMusic.src = 'tappaja1.mp3';
         backgroundMusic.loop = true;
         backgroundMusic.volume = 0.5; // Set volume to 50%
         
