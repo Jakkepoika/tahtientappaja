@@ -1,0 +1,3060 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tahtien Tappaja</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+	<meta http-equiv="ScreenOrientation" content="autoRotate:disabled">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="mobile-web-app-capable" content="yes">
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: black;
+            font-family: Arial, sans-serif;
+            
+        }
+        #gameCanvas {
+            border: 2px solid #333;
+			touch-action: none;
+			will-change: transform;
+			transform: translateZ(0);
+			-webkit-transform: translateZ(0);
+			backface-visibility: hidden;
+			-webkit-backface-visibility: hidden;
+        }
+        .screen {
+			position: fixed;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			background: rgba(16, 22, 78, 0.4); /* Make background semi-transparent */
+			padding: 20px;
+			color: white;
+			text-align: center;
+			z-index: 100;
+			display: none;
+		}
+		#logoContainer {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			width: 100%;
+		}
+
+		#startScreen {
+			z-index: 90; // Lower than loading screen
+		}
+
+		#loadingScreen {
+			z-index: 95; // Higher than start screen
+		}
+        .button {
+            background: #4CAF50;
+            border: none;
+            padding: 15px 30px;
+            color: white;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        #gameStats {
+			position: fixed;
+			top: 10px;
+			left: 10px;
+			color: white;
+			z-index: 100;
+			display: none;
+			width: 100%;
+			text-align: center;
+			padding: 5px;
+		}
+        #gameOverScreen {
+            display: none;
+            z-index: 200;
+        }
+		.socialLink {
+			transition: transform 0.2s;
+			display: block;
+		}
+		.socialLink:hover {
+			transform: scale(1.1);
+		}
+		.socialLink img {
+			border-radius: 8px;
+		}
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+	<div id="gameStats" style="display:none; visibility:hidden; opacity:0; position:absolute; left:-9999px;">
+		<div>Score: <span id="score">0</span></div>
+		<div>HP: <span id="hp">100</span></div>
+	</div>
+
+	<div id="startScreen" class="screen">
+		<div id="logoContainer">
+			<img src="LOGO.png" alt="Logo" style="max-width: 300px; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto;">
+			<canvas id="characterAnimCanvas" width="250" height="250" style="margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto;"></canvas>
+		</div>
+		<canvas id="startButtonCanvas" width="335" height="125" style="cursor: pointer; max-width: 100%;"></canvas>
+		<div id="socialLinks" style="margin-top: 20px; display: flex; justify-content: center; gap: 20px;">
+			<a href="https://open.spotify.com/track/38Axyw968uHdx7JJxUni6y" target="_blank" class="socialLink">
+				<img src="Spoti.png" alt="Spotify" width="50" height="50">
+			</a>
+			<a href="https://www.instagram.com/jakkepoikanen?igsh=Y2d2YzBvemJqam52" target="_blank" class="socialLink">
+				<img src="ig.png" alt="Instagram" width="50" height="50">
+			</a>
+		</div>
+	</div>
+
+	<div id="gameOverScreen" class="screen" style="display:none;">
+		<h2>Game Over</h2>
+		<p>Final Score: <span id="finalScore">0</span></p>
+		<canvas id="restartButtonCanvas" width="335" height="125" style="cursor: pointer; max-width: 100%;"></canvas>
+		<div id="socialLinks2" style="margin-top: 20px; display: flex; justify-content: center; gap: 20px;">
+			<a href="https://open.spotify.com/track/38Axyw968uHdx7JJxUni6y" target="_blank" class="socialLink">
+				<img src="Spoti.png" alt="Spotify" width="50" height="50">
+			</a>
+			<a href="https://www.instagram.com/jakkepoikanen?igsh=Y2d2YzBvemJqam52" target="_blank" class="socialLink">
+				<img src="ig.png" alt="Instagram" width="50" height="50">
+			</a>
+		</div>
+	</div>
+    <script>
+// Screen orientation locking function
+function lockScreenOrientation() {
+    try {
+        // For most modern browsers
+        if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('portrait')
+                .then(() => {
+                    console.log('Screen orientation locked to portrait');
+                })
+                .catch(error => {
+                    console.error('Screen orientation lock error:', error);
+                });
+        } 
+        // For older iOS
+        else if (window.orientation !== undefined) {
+            // Can't actually lock, but can detect changes
+            window.addEventListener('orientationchange', function() {
+                console.log('Orientation changed to: ', window.orientation);
+                // Force portrait layout regardless of physical orientation
+                resizeCanvas();
+            });
+        }
+    } catch (error) {
+        console.error('Error setting up orientation lock:', error);
+    }
+}
+// Asset loading handler
+// Modify your assetLoaded function to handle the transition better
+function assetLoaded() {
+    try {
+        assetsLoaded++;
+        console.log("Asset loaded. Total: " + assetsLoaded + "/" + totalAssets);
+        
+        // If all assets are loaded, switch to start screen
+        if (assetsLoaded >= totalAssets) {
+            console.log("All assets loaded, switching to start screen");
+            
+            // Make sure we stop the loading animation
+            if (loadingLoop) {
+                cancelAnimationFrame(loadingLoop);
+                loadingLoop = null;
+            }
+            
+            // Final clear of the canvas to remove loading screen
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            setTimeout(() => {
+                switchScreen("start");
+            }, 500);
+        }
+    } catch (error) {
+        console.error("Error in assetLoaded:", error);
+        // Force proceed if there's an error
+        if (assetsLoaded < totalAssets) {
+            assetsLoaded = totalAssets;
+            switchScreen("start");
+        }
+    }
+}
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+		const startScreen = document.getElementById('startScreen');
+		const gameOverScreen = document.getElementById('gameOverScreen');
+		const gameStats = document.getElementById('gameStats');
+		const startButton = document.getElementById('startButton');
+		const restartButton = document.getElementById('restartButton');
+		const scoreElement = document.getElementById('score');
+		const hpElement = document.getElementById('hp');
+		const finalScoreElement = document.getElementById('finalScore');
+		
+
+
+
+
+
+		
+		canvas.width = 400;
+        canvas.height = 800;
+		
+		function resizeCanvas() {
+			// Get the dimensions of the viewport
+			const viewportWidth = window.innerWidth;
+			const viewportHeight = window.innerHeight;
+			
+			// Set canvas size to fit screen while maintaining aspect ratio
+			if (viewportWidth / viewportHeight > 1) {
+				// Landscape orientation
+				canvas.height = Math.min(viewportHeight * 0.95, 800);
+				canvas.width = canvas.height / 2; // Maintain your 1:2 aspect ratio
+			} else {
+				// Portrait orientation (most phones)
+				canvas.width = Math.min(viewportWidth * 0.95, 400);
+				canvas.height = canvas.width * 2; // Maintain your 1:2 aspect ratio
+			}
+			
+			// Recreate mobile controls with new canvas dimensions
+			if (isMobile) {
+				createMobileControls();
+			}
+		}
+		
+        // Game state global variables
+		let currentScreen = "loading";
+		let loadingLoop;
+		let totalAssets = 13; // Increased by 1 to include the missile 
+		let keys = {}; // Track pressed keys
+		let isMobile = false; // Will be set based on device detection
+		let joystick = {
+			active: false,
+			baseX: 0,
+			baseY: 0,
+			knobX: 0,
+			knobY: 0,
+			radius: 50,  // Size of the joystick base
+			knobRadius: 25, // Size of the inner knob
+			maxDistance: 50 // Maximum distance the knob can move from center
+		};
+
+		let fireButton = {
+			x: 0,
+			y: 0,
+			radius: 40,
+			pressed: false
+		};
+		let gameStartSequence = false;
+		let playerReady = false;
+		let enemySpawningActive = false;
+		let playerInvulnerable = false;
+		let playerInvulnerableTimer = 0;
+		let assetsLoaded = 0;
+		let isLoading = true;
+		let backgroundMusic = null;
+		let isBackgroundMusicPlaying = false;
+		// Main screen stars
+		const mainScreenStars = [];
+		// Debug mode flag - set to true to enable console logs and visual debug info
+		const DEBUG_MODE = true;
+		// Powerup milestone tracking
+		let reachedMilestones = [false, false, false, false];
+		// Global mouse position tracking
+		let mouseX, mouseY;
+		const NUM_MAIN_SCREEN_STARS = 50;
+		let mainScreenStarsAnimationId = null;
+		let mainCharacterAnimFrame = 0;
+		let mainCharacterAnimTimer = 0;
+		const mainCharacterFrameCount = 4; // Your animation has 4 frames
+		const mainCharacterFrameWidth = 250; // Width of each frame in pixels
+		const mainCharacterFrameHeight = 1000; // Height of each frame in pixels
+		const mainCharacterFrameDuration = 150; // Milliseconds per frame (adjust for speed)
+		// Player animation variables
+		let playerAnimFrame = 0;
+		let playerAnimTimer = 0;
+		// Start button animation variables
+		let startButtonImage = new Image();
+		let startButtonAnimating = false;
+		let startButtonFrame = 0;
+		let startButtonFrameCount = 17; // Your animation has 17 frames
+		let startButtonFrameWidth = 670; // Width of each frame
+		let startButtonFrameHeight = 250; // Height of each frame
+		let startButtonTimer = 0;
+		let startButtonAnimationDuration = 1000; // 1 seconds for the whole animation
+		// Restart button animation variables (uses same image as start button)
+		let restartButtonAnimating = false;
+		let restartButtonFrame = 0;
+		let restartButtonTimer = 0;
+		const playerFrameCount = 2; // Your animation has 2 frames
+		const playerFrameWidth = 500; // Width of each frame in your vertical sprite sheet
+		const playerFrameHeight = 500; // Height of each frame (1000px ÷ 2 frames = 500px per frame)
+		const playerFrameDuration = 200; // Milliseconds per frame (adjust for speed)
+		// Explosion animation variables
+		let explosionImage = new Image();
+		let explosions = []; // Array to track multiple explosions
+		const explosionFrameCount = 7; // Your animation has 7 frames
+		const explosionFrameWidth = 250; // Width of each frame
+		const explosionFrameHeight = 172; // Height of each frame
+		const explosionDuration = 250; // 0.25 seconds for the whole animation
+		// Ohjus (missile) animation variables
+		let ohjusImage = new Image();
+		const ohjusFrameCount = 2; // Two frames for animation
+		const ohjusFrameWidth = 500; // Width of each frame
+		const ohjusFrameHeight = 500; // Height of each frame
+		const ohjusFrameDuration = 200; // Milliseconds per frame
+		// Powerup variables
+		let powerup = null;
+		let powerupSpawned = false;
+
+		// Rapid Fire powerup
+		let rapidFireActive = false;
+		let rapidFireBulletsLeft = 0;
+
+		// Dual Fire powerup
+		let dualFireActive = false;
+
+		// Shield powerup
+		let shieldActive = false;
+		let shieldHealth = 0;
+
+		// Powerup spawn rates (percentage chance when defeating an enemy)
+		const POWERUP_SPAWN_RATE = 0.05; // 5% chance to spawn any powerup
+		const POWERUP_TYPES = {
+			RAPID_FIRE: {id: 0, chance: 0.35, color: '#FFD700'}, // 25% of powerups (down from 60%)
+			SHIELD: {id: 1, chance: 0.50, color: '#00BFFF'},     // 30% of powerups (unchanged)
+			DUAL_FIRE: {id: 2, chance: 0.15, color: '#FF00FF'}   // 15% of powerups (up from 10%)
+		};
+        let gameLoop;
+        let isGameRunning = false;
+        let lastShot = 0;
+        let score = 0;
+        const shootingDelay = 250;
+		let rapidFireShootingDelay = shootingDelay / 3; //200% faster
+		let gameTime = 0; // Time in seconds
+		let lastTimeCheck = 0;
+		let explosionAnimation = null;
+		let bossSpawned = false;
+		let regularEnemiesDisabled = false;
+		let boss = null;
+		let bossAnimationFrame = 0;
+		let bossAnimationTimer = 0;
+		const bossFrameCount = 6; // Your Piskel has 6 frames
+		const bossFrameWidth = 250; // Width of each frame in pixels
+		const bossFrameHeight = 250; // Height of each frame in pixels
+		const bossFrameDuration = 100; // Milliseconds per frame (adjust for speed)
+		let lastBossMissile = 0;
+		const bossMissileDelay = 5000; // 10 seconds
+		window.pendingScreenTimeouts = [];
+// Add this function to properly initialize loading
+function startLoading() {
+    console.log("Initializing loading process");
+    // Switch to loading screen explicitly
+    currentScreen = "loading";
+    isLoading = true;
+    isGameRunning = false;
+    
+    // Hide all UI screens during loading
+    document.getElementById('startScreen').style.display = 'none';
+    document.getElementById('gameOverScreen').style.display = 'none';
+    document.getElementById('gameStats').style.display = 'none';
+    
+    // Reset asset loading counter
+    assetsLoaded = 0;
+    
+    // Start loading animation
+    console.log("Starting loading animation");
+    function loadingAnimation() {
+        if (currentScreen === "loading") {
+            showLoadingScreen();
+            loadingLoop = requestAnimationFrame(loadingAnimation);
+        }
+    }
+    loadingLoop = requestAnimationFrame(loadingAnimation);
+    
+    // Start loading assets
+    console.log("Starting asset loading");
+    loadAllAssets();
+}
+function switchScreen(newScreen) {
+    console.log(`Switching from ${currentScreen} to ${newScreen}`);
+	// Cancel star animation if switching away from start screen
+    if (currentScreen === "start" && newScreen !== "start" && mainScreenStarsAnimationId) {
+        cancelAnimationFrame(mainScreenStarsAnimationId);
+        mainScreenStarsAnimationId = null;
+    }
+    
+    // Cancel any loading animation
+    if (loadingLoop) {
+        cancelAnimationFrame(loadingLoop);
+        loadingLoop = null;
+    }
+    
+    // Hide all screens
+    const startScreen = document.getElementById('startScreen');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const gameStats = document.getElementById('gameStats');
+    
+    if (startScreen) startScreen.style.display = 'none';
+    if (gameOverScreen) gameOverScreen.style.display = 'none';
+    if (gameStats) gameStats.style.display = 'none';
+    
+    // Show appropriate screen
+    if (newScreen === "loading") {
+        isLoading = true;
+        isGameRunning = false;
+        
+        // Start loading animation
+        loadingLoop = requestAnimationFrame(function loadingAnimation() {
+            showLoadingScreen();
+            loadingLoop = requestAnimationFrame(loadingAnimation);
+        });
+    } 
+    else if (newScreen === "start") {
+		isLoading = false;
+		isGameRunning = false;
+		
+		// Draw background with stars first
+		ctx.fillStyle = '#10164e';
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
+		
+		// Initialize stars before showing the UI
+		initializeMainScreenStars();
+		mainScreenStarsAnimationId = requestAnimationFrame(updateAndDrawMainScreenStars);
+		
+		// Then show the UI
+		if (startScreen) {
+			startScreen.style.display = 'block';
+		}
+		
+		// Start main character animation
+		mainCharacterAnimFrame = 0;
+		mainCharacterAnimTimer = Date.now();
+		requestAnimationFrame(animateMainCharacter);
+		// Initialize start button
+		startButtonFrame = 0;
+		updateStartButton();
+	} 
+    else if (newScreen === "game") {
+        isLoading = false;
+        isGameRunning = true;
+        
+        if (gameStats) {
+            gameStats.style.display = 'block';
+        }
+    } 
+    else if (newScreen === "gameOver") {
+		isLoading = false;
+		isGameRunning = false;
+		
+		if (gameOverScreen) {
+			gameOverScreen.style.display = 'block';
+			// Initialize restart button
+			restartButtonFrame = 0;
+			updateRestartButton();
+		}
+	}
+    
+    currentScreen = newScreen;
+}
+
+function detectMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+           (window.matchMedia && window.matchMedia("(max-width: 768px)").matches);
+}
+function createMobileControls() {
+    // No longer needed with new touch control system
+    // Keep empty in case it's referenced elsewhere
+}
+
+// Fix the loadAllAssets function to use window.enemyImage references:
+// Replace your loadAllAssets function with this improved version:
+function loadAllAssets() {
+    // Reset the counter to make sure we start from 0
+    assetsLoaded = 0;
+    
+    // Create a timeout safety mechanism
+    const loadingTimeout = setTimeout(() => {
+        console.log("Loading timeout - forcing game to start anyway");
+        // Force set the exact count rather than incrementing
+        assetsLoaded = totalAssets;
+        showLoadingScreen(); // Update the loading screen one last time
+        
+        // Switch to start screen after a brief delay to show 100%
+        setTimeout(() => {
+            if (currentScreen === "loading") {
+                switchScreen("start");
+            }
+        }, 500);
+    }, 10000);
+    
+    if (!window.pendingScreenTimeouts) window.pendingScreenTimeouts = [];
+	window.pendingScreenTimeouts.push(loadingTimeout);
+    
+    // Simple load function for each image
+    function loadImage(img, src) {
+        img.onload = function() { 
+            assetLoaded(); 
+            this.onload = null; 
+        };
+        img.onerror = function() { 
+            console.error("Failed to load image:", src);
+            assetLoaded(); 
+            this.onerror = null; 
+        };
+        img.src = src;
+    }
+    // Ensure image objects are initialized before loading
+	if (!window.startButtonImage) window.startButtonImage = new Image();
+	if (!window.explosionImage) window.explosionImage = new Image();
+	if (!window.enemyImage) window.enemyImage = new Image();
+	if (!window.shootingEnemyImage) window.shootingEnemyImage = new Image();
+	if (!window.circularEnemyImage) window.circularEnemyImage = new Image();
+	if (!window.spinnerEnemyImage) window.spinnerEnemyImage = new Image();
+	if (!window.powerupImage) window.powerupImage = new Image();
+	if (!window.ohjusImage) window.ohjusImage = new Image();
+	if (!window.bossImage) window.bossImage = new Image();
+	if (!window.playerImage) window.playerImage = new Image();
+	if (!window.logoImage) window.logoImage = new Image();
+	if (!window.mainCharacterAnimImage) window.mainCharacterAnimImage = new Image();
+	console.log("Image objects initialized for loading");
+	
+    // Load all images
+	loadImage(window.startButtonImage, 'start.png');
+	loadImage(window.explosionImage, 'explo.png');
+	// Add a special error handling for the start button
+	// After loadImage(window.startButtonImage, 'start.png');
+	window.startButtonImage.addEventListener('load', function() {
+		console.log("Start button image loaded successfully:", this.width, "x", this.height);
+		// Force start button update once loaded
+		setTimeout(updateStartButton, 100);
+	});
+
+	window.startButtonImage.addEventListener('error', function() {
+		console.error("Failed to load start button image - check path and file existence");
+		// Create a fallback button
+		const tempCanvas = document.createElement('canvas');
+		tempCanvas.width = 670;
+		tempCanvas.height = 4250;
+		const tempCtx = tempCanvas.getContext('2d');
+		
+		// Create a simple green button as fallback
+		for (let i = 0; i < 17; i++) {
+			tempCtx.fillStyle = i === 0 ? '#4CAF50' : '#2E7D32';
+			tempCtx.fillRect(0, i * 250, 670, 250);
+			tempCtx.fillStyle = 'white';
+			tempCtx.font = '40px Arial';
+			tempCtx.textAlign = 'center';
+			tempCtx.fillText('START GAME', 335, i * 250 + 125);
+		}
+		
+		// Set the canvas as the source for the image
+		this.src = tempCanvas.toDataURL();
+	});
+    loadImage(window.enemyImage, 'punatahti.png');
+    loadImage(window.shootingEnemyImage, 'sinitahti.png');
+    loadImage(window.circularEnemyImage, 'vihertahti.png');
+    loadImage(window.spinnerEnemyImage, 'keltatahti.png');
+    loadImage(window.powerupImage, 'powerup1.png');
+    loadImage(window.bossImage, 'boss.png');
+    loadImage(window.playerImage, 'alus1.png');
+    loadImage(window.logoImage, 'LOGO.png');
+	loadImage(window.mainCharacterAnimImage, 'alkuanim.png');
+	loadImage(window.ohjusImage, 'ohjus.png');
+    
+    // Audio loading with simplified approach
+    try {
+        const tempAudio = new Audio();
+        tempAudio.addEventListener('canplaythrough', function() {
+            assetLoaded();
+        }, {once: true});
+        
+        tempAudio.addEventListener('error', function() {
+            console.log("Audio preload error - continuing anyway");
+            assetLoaded();
+        }, {once: true});
+        
+        // Shorter timeout for audio
+        setTimeout(() => {
+            if (assetsLoaded === totalAssets - 1) {
+                console.log("Audio timeout - continuing anyway");
+                assetLoaded();
+            }
+        }, 2000);
+        
+        tempAudio.src = 'tappaja.mp3';
+    } catch (e) {
+        console.error("Audio preload error:", e);
+        assetLoaded(); // Count as loaded even if it fails
+    }
+	const checkAssetsInterval = setInterval(() => {
+		if (assetsLoaded >= totalAssets) {
+			console.log("All assets loaded via interval check");
+			clearInterval(checkAssetsInterval);
+			
+			// Switch to start screen after a brief delay
+			setTimeout(() => {
+				if (currentScreen === "loading") {
+					isLoading = false;
+					switchScreen("start");
+				}
+			}, 500);
+		}
+	}, 500);
+}
+
+// Add this at the end of your script block
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM loaded, initializing game...");
+	
+	// Lock screen orientation for mobile devices
+    if (detectMobile()) {
+        lockScreenOrientation();
+    }
+    
+    // Initialize image objects
+    window.enemyImage = new Image();
+    window.shootingEnemyImage = new Image();
+    window.circularEnemyImage = new Image();
+    window.spinnerEnemyImage = new Image();
+    window.powerupImage = new Image();
+    window.bossImage = new Image();
+    window.playerImage = new Image();
+    window.logoImage = new Image();
+	window.mainCharacterAnimImage = new Image();
+	window.explosionImage = new Image();
+	window.ohjusImage = new Image();
+	
+	// Ensure the start button image is initialized
+	window.startButtonImage = window.startButtonImage || new Image();
+    
+    // Resize canvas to fit the device screen
+    resizeCanvas();
+    
+    // Get references to DOM elements
+    const startButton = document.getElementById('startButton');
+    const restartButton = document.getElementById('restartButton');
+    
+    // Fix start button event listener
+    // Set up start button canvas interaction
+	const startButtonCanvas = document.getElementById('startButtonCanvas');
+	if (startButtonCanvas) {
+		// Mouse events for desktop
+		startButtonCanvas.addEventListener('mousedown', function() {
+			startButtonAnimating = true;
+			startButtonTimer = Date.now();
+			requestAnimationFrame(updateStartButton);
+		});
+		
+		startButtonCanvas.addEventListener('mouseup', function() {
+			if (startButtonAnimating) {
+				startButtonAnimating = false;
+				startButtonFrame = 0; // Reset to frame 0 when released early
+				updateStartButton(); // Update to show the reset frame
+			}
+		});
+		
+		startButtonCanvas.addEventListener('mouseleave', function() {
+			if (startButtonAnimating) {
+				startButtonAnimating = false;
+				startButtonFrame = 0; // Reset frame when mouse leaves
+				updateStartButton();
+			}
+		});
+		
+		// Touch events for mobile
+		startButtonCanvas.addEventListener('touchstart', function(e) {
+			e.preventDefault();
+			startButtonAnimating = true;
+			startButtonTimer = Date.now();
+			requestAnimationFrame(updateStartButton);
+		});
+		
+		startButtonCanvas.addEventListener('touchend', function(e) {
+			e.preventDefault();
+			if (startButtonAnimating) {
+				startButtonAnimating = false;
+				startButtonFrame = 0; // Reset to frame 0 
+				updateStartButton();
+			}
+		});
+		
+		startButtonCanvas.addEventListener('touchcancel', function(e) {
+			e.preventDefault();
+			if (startButtonAnimating) {
+				startButtonAnimating = false;
+				startButtonFrame = 0;
+				updateStartButton();
+			}
+		});
+		
+		console.log("Start button canvas listeners added");
+	} else {
+		console.error("Start button canvas not found!");
+	}
+    
+    // Set up restart button with the same hold-to-activate behavior
+	const restartButtonCanvas = document.getElementById('restartButtonCanvas');
+	if (restartButtonCanvas) {
+		// Mouse events for desktop
+		restartButtonCanvas.addEventListener('mousedown', function() {
+			restartButtonAnimating = true;
+			restartButtonTimer = Date.now();
+			requestAnimationFrame(updateRestartButton);
+		});
+		
+		restartButtonCanvas.addEventListener('mouseup', function() {
+			if (restartButtonAnimating) {
+				restartButtonAnimating = false;
+				restartButtonFrame = 0; // Reset to frame 0 when released early
+				updateRestartButton(); // Update to show the reset frame
+			}
+		});
+		
+		restartButtonCanvas.addEventListener('mouseleave', function() {
+			if (restartButtonAnimating) {
+				restartButtonAnimating = false;
+				restartButtonFrame = 0; // Reset frame when mouse leaves
+				updateRestartButton();
+			}
+		});
+		
+		// Touch events for mobile
+		restartButtonCanvas.addEventListener('touchstart', function(e) {
+			e.preventDefault();
+			restartButtonAnimating = true;
+			restartButtonTimer = Date.now();
+			requestAnimationFrame(updateRestartButton);
+		});
+		
+		restartButtonCanvas.addEventListener('touchend', function(e) {
+			e.preventDefault();
+			if (restartButtonAnimating) {
+				restartButtonAnimating = false;
+				restartButtonFrame = 0; // Reset to frame 0 
+				updateRestartButton();
+			}
+		});
+		
+		restartButtonCanvas.addEventListener('touchcancel', function(e) {
+			e.preventDefault();
+			if (restartButtonAnimating) {
+				restartButtonAnimating = false;
+				restartButtonFrame = 0;
+				updateRestartButton();
+			}
+		});
+		
+		console.log("Restart button canvas listeners added");
+	}
+    
+    // Add window resize listener
+    window.addEventListener('resize', function() {
+        resizeCanvas();
+    });
+    
+    // Start the loading process
+    setTimeout(startLoading, 100);
+});
+document.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    
+    // Prevent scrolling with arrow keys and space
+    if(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+        e.preventDefault();
+    }
+});
+
+document.addEventListener('keyup', (e) => {
+    keys[e.code] = false;
+});
+
+
+        let lastGroupSpawn = 0;
+        const groupSpawnDelay = 15000; // Spawn group every 15 seconds
+        // Player
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height - 80,
+            size: 95,
+            hp: 100,
+            maxHp: 100,
+            bullets: []
+        };
+        // Game objects
+        const enemies = [];
+        const enemyBullets = [];
+        let circularGroup = null;
+        // Background stars
+        const stars = [];
+        const NUM_STARS = 100;
+        // Initialize stars with different sizes and speeds
+        for (let i = 0; i < NUM_STARS; i++) {
+			stars.push({
+				x: Math.random() * canvas.width,
+				y: Math.random() * canvas.height,
+				size: Math.random() * 2 + 0.5, // Stars of different sizes (0.5 to 2.5)
+				speed: Math.random() * 0.3 + 0.1, // Very slow speeds (0.1 to 0.4)
+				angle: Math.random() * Math.PI * 2, // Random starting rotation
+				rotationSpeed: 0.01 + (Math.random() * 0.01) // Small positive rotation speed
+			});
+		}
+
+function showLoadingScreen() {
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw loading text
+    ctx.fillStyle = 'white';
+    ctx.font = '24px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('TESTI7', canvas.width / 2, canvas.height / 2 - 50);
+    
+    // Draw loading bar background
+    ctx.fillStyle = '#333';
+    const barWidth = 200;
+    const barHeight = 20;
+    ctx.fillRect(canvas.width / 2 - barWidth / 2, canvas.height / 2, barWidth, barHeight);
+    
+    // Draw loading bar progress capped at 100%
+    const progress = Math.min(assetsLoaded / totalAssets, 1);
+    ctx.fillStyle = '#4CAF50';
+    ctx.fillRect(canvas.width / 2 - barWidth / 2, canvas.height / 2, barWidth * progress, barHeight);
+    
+    // Draw percentage
+    ctx.fillStyle = 'white';
+    ctx.font = '14px Arial';
+    ctx.fillText(`${Math.min(Math.round(progress * 100), 100)}%`, canvas.width / 2, canvas.height / 2 + 40);
+}
+
+		// Create a function to initialize and play the music
+// Modify the initializeMusic function
+function initializeMusic() {
+    // If music is already playing, don't initialize again
+    if (isBackgroundMusicPlaying) {
+        console.log("Music already playing, skipping initialization");
+        return;
+    }
+    
+    // For all devices - unified approach
+    if (!backgroundMusic) {
+        backgroundMusic = new Audio('tappaja.mp3');
+        backgroundMusic.loop = true;
+        backgroundMusic.volume = 0.5;
+        backgroundMusic.preload = 'auto'; // Ensure full preload
+        
+        // Set up seamless looping by detecting near-end
+        backgroundMusic.addEventListener('timeupdate', function() {
+            // If we're within 0.1 seconds of the end, restart
+            if (this.duration - this.currentTime < 0.1) {
+                this.currentTime = 0;
+            }
+        });
+        
+        // Use a user interaction to trigger audio
+        const playPromise = backgroundMusic.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                console.log("Audio playing successfully");
+                isBackgroundMusicPlaying = true;
+            }).catch(e => {
+                console.log("Autoplay prevented, trying again on next user interaction");
+                
+                const playOnInteraction = function() {
+                    backgroundMusic.play()
+                    .then(() => {
+                        console.log("Audio playing after user interaction");
+                        isBackgroundMusicPlaying = true;
+                        
+                        // Remove event listeners once it succeeds
+                        document.removeEventListener('click', playOnInteraction);
+                        document.removeEventListener('touchstart', playOnInteraction);
+                    })
+                    .catch(e => console.log("Still couldn't play audio:", e));
+                };
+                
+                // Add event listeners for both click and touch
+                document.addEventListener('click', playOnInteraction, {once: true});
+                document.addEventListener('touchstart', playOnInteraction, {once: true});
+            });
+        }
+    } else if (backgroundMusic.paused) {
+        backgroundMusic.play()
+        .then(() => isBackgroundMusicPlaying = true)
+        .catch(e => console.log("Could not resume audio:", e));
+    }
+}
+
+// Additionally, ensure music is stopped when switching away from game
+function stopMusic() {
+    // Function intentionally left empty to keep music playing
+    console.log("stopMusic called but ignored to keep music playing");
+    return;
+}
+
+// Add this to handle game state transitions
+function endGame() {
+    isGameRunning = false;
+    cancelAnimationFrame(gameLoop);
+    finalScoreElement.textContent = score;
+    gameStats.style.display = 'none';
+    gameOverScreen.style.display = 'block';
+    
+    
+    // Make sure the restart button is properly initialized
+    restartButtonFrame = 0;
+    
+    // Use a longer delay to ensure DOM is fully updated before drawing
+    setTimeout(function() {
+        console.log("Initializing restart button after game over");
+        updateRestartButton();
+    }, 200); // Increased from 50ms to 200ms
+}
+
+
+
+
+
+        function updateStars() {
+			stars.forEach(star => {
+				star.y += star.speed;
+				if (star.y > canvas.height) {
+					star.y = 0;
+					star.x = Math.random() * canvas.width;
+				}
+			});
+		}
+
+		function drawStars() {
+			ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+			stars.forEach(star => {
+				ctx.beginPath();
+				ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+				ctx.fill();
+			});
+		}
+		
+        function drawStars() {
+			stars.forEach(star => {
+				// Save context for rotation
+				ctx.save();
+				ctx.translate(star.x, star.y);
+				ctx.rotate(star.angle);
+				
+				// Draw a simple plus shape
+				ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+				const size = star.size * 2; // Make stars a bit bigger for visibility
+				
+				// Horizontal line
+				ctx.fillRect(-size, -size/4, size*2, size/2);
+				
+				// Vertical line
+				ctx.fillRect(-size/4, -size, size/2, size*2);
+				
+				ctx.restore();
+			});
+		}
+function initializeMainScreenStars() {
+    // Clear existing stars
+    mainScreenStars.length = 0;
+    
+    // Create new stars
+    for (let i = 0; i < NUM_MAIN_SCREEN_STARS; i++) {
+        mainScreenStars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 2 + 0.5, // Stars of different sizes (0.5 to 2.5)
+            speedX: (Math.random() * 0.2) - 0.1, // Very slow diagonal movement
+            speedY: Math.random() * 0.1 + 0.05,  // Slow downward movement
+            angle: Math.random() * Math.PI * 2,  // Random starting rotation
+            rotationSpeed: 0.01 + (Math.random() * 0.01) // Small rotation speed
+        });
+    }
+}
+function updateAndDrawMainScreenStars() {
+    if (currentScreen !== "start") {
+        // If we're not on the start screen, cancel the animation
+        if (mainScreenStarsAnimationId) {
+            cancelAnimationFrame(mainScreenStarsAnimationId);
+            mainScreenStarsAnimationId = null;
+        }
+        return;
+    }
+    
+    // Clear the entire canvas with the background color
+    ctx.fillStyle = '#10164e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Update and draw stars - make them brighter for better visibility
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'; // Increased opacity for visibility
+    mainScreenStars.forEach(star => {
+        // Update position
+        star.x += star.speedX;
+        star.y += star.speedY;
+        star.angle += star.rotationSpeed;
+        
+        // Wrap around if off screen
+        if (star.x < 0) star.x = canvas.width;
+        if (star.x > canvas.width) star.x = 0;
+        if (star.y > canvas.height) star.y = 0;
+        
+        // Draw the star (using the same style as game stars but slightly larger)
+        ctx.save();
+        ctx.translate(star.x, star.y);
+        ctx.rotate(star.angle);
+        
+        // Draw a simple plus shape - make it larger for better visibility
+        const size = star.size * 3; // Increased size
+        
+        // Horizontal line
+        ctx.fillRect(-size, -size/4, size*2, size/2);
+        
+        // Vertical line
+        ctx.fillRect(-size/4, -size, size/2, size*2);
+        
+        ctx.restore();
+    });
+    
+    // Continue the animation
+    mainScreenStarsAnimationId = requestAnimationFrame(updateAndDrawMainScreenStars);
+}
+
+function startGame() {
+    console.log("Start game function called!");
+    
+    // Switch to game screen
+    switchScreen("game");
+    
+    // Initialize game - using try/catch for better error handling
+    try {
+        // Start the background music
+        initializeMusic();
+        
+        // Reset game state
+        score = 0;
+        gameTime = 0;
+        lastTimeCheck = Date.now();
+        bossSpawned = false;
+        regularEnemiesDisabled = false;
+        boss = null;
+        explosionAnimation = null;
+        
+        // Set up game start sequence
+        gameStartSequence = true;
+        playerReady = false;
+        enemySpawningActive = false;
+        
+        // Initialize device detection and controls
+        isMobile = detectMobile();
+        
+        // Always create mobile controls - They'll only be visible on mobile
+        createMobileControls();
+        
+        // Reset player - start fully below screen
+		player.y = canvas.height + 100;
+		player.x = canvas.width / 2;
+        player.hp = player.maxHp;
+        player.bullets = [];
+        
+        // Make player invulnerable until player becomes controllable
+        playerInvulnerable = true;
+        playerInvulnerableTimer = Date.now();
+        
+        // Clear enemies
+        enemies.length = 0;
+        enemyBullets.length = 0;
+        circularGroup = null;
+        lastGroupSpawn = Date.now();
+        
+        // Reset powerups
+		rapidFireActive = false;
+		rapidFireBulletsLeft = 0;
+		dualFireActive = false;
+		shieldActive = false;
+		shieldHealth = 0;
+		powerup = null;
+		powerupSpawned = false;
+        
+        // Update UI
+        scoreElement.textContent = score;
+        hpElement.textContent = player.hp;
+        
+        // Enable player control and enemy spawning after delay
+        setTimeout(() => {
+            playerReady = true;
+        }, 4000); // 4 seconds
+        
+        setTimeout(() => {
+            enemySpawningActive = true;
+        }, 5000); // 5 seconds
+        
+        // Start the game loop
+		// Draw debug info if enabled
+		if (DEBUG_MODE) {
+			drawDebugInfo();
+		}
+		
+        gameLoop = requestAnimationFrame(update);
+        
+        console.log("Game started successfully");
+    } catch (e) {
+        console.error("Error starting game:", e);
+    }
+}
+function restartGame() {
+    isGameRunning = true;
+	// Reset mouse position to prevent unwanted movement
+	mouseX = undefined;
+	mouseY = undefined;
+    score = 0;
+    gameTime = 0;
+    lastTimeCheck = Date.now();
+    bossSpawned = false;
+    regularEnemiesDisabled = false;
+    boss = null;
+    explosionAnimation = null; // Make sure this is here
+    
+    // Reset player position to match initial game start
+	player.y = canvas.height + 100; // Start below the screen
+	player.x = canvas.width / 2;    // Center horizontally
+    player.hp = player.maxHp;
+    player.bullets = [];
+    
+    // Set up game start sequence like in startGame
+    gameStartSequence = true;
+    playerReady = false;
+    enemySpawningActive = false;
+    
+    // Make player invulnerable for the first 3 seconds
+    playerInvulnerable = true;
+    playerInvulnerableTimer = Date.now();
+    
+    enemies.length = 0;
+    enemyBullets.length = 0;
+    circularGroup = null;
+    lastGroupSpawn = Date.now();
+    
+    // Reset powerups
+	rapidFireActive = false;
+	rapidFireBulletsLeft = 0;
+	dualFireActive = false;
+	shieldActive = false;
+	shieldHealth = 0;
+	powerup = null;
+	powerupSpawned = false;
+	// Reset milestone tracking properly
+	for (let i = 0; i < reachedMilestones.length; i++) {
+		reachedMilestones[i] = false;
+	}
+
+    // Remove any existing powerup indicator
+    const indicator = document.getElementById('powerupIndicator');
+    if (indicator) {
+        indicator.remove();
+    }
+    
+    scoreElement.textContent = score;
+    hpElement.textContent = player.hp;
+    
+    gameOverScreen.style.display = 'none';
+    gameStats.style.display = 'block';
+    
+    // Enable player control and enemy spawning after delay - just like in startGame
+    setTimeout(() => {
+        playerReady = true;
+    }, 4000); // 4 seconds
+    
+    setTimeout(() => {
+        enemySpawningActive = true;
+    }, 5000); // 5 seconds
+    
+    gameLoop = requestAnimationFrame(update);
+}
+		// Add this function to spawn the boss
+		function spawnBoss() {
+			bossSpawned = true;
+			regularEnemiesDisabled = true;
+			lastBossMissile = Date.now();
+			bossAnimationFrame = 0;  // Reset animation frame
+			bossAnimationTimer = Date.now();  // Reset animation timer
+			boss = {
+				x: canvas.width / 2,
+				y: 100,
+				width: 75,
+				height: 75,
+				hp: 220,
+				maxHp: 200,
+				lastShot: 0,
+				shootingDelay: 1000, // 1 second
+				moveDirection: 1,    // 1 for right, -1 for left
+				moveSpeed: 1.5,
+				movePattern: 0,      // 0 for horizontal, 1 for diagonal
+				patternTimer: 0,     // For switching patterns
+				patternDuration: 5000 // Switch pattern every 5 seconds
+			};
+		}
+
+		// Add this function to handle boss shooting
+		function bossShooting() {
+			if (!boss) return;
+			
+			const now = Date.now();
+			
+			// Regular shots
+			if (now - boss.lastShot >= boss.shootingDelay) {
+				// Three bullets in a spread pattern
+				for (let i = -1; i <= 1; i++) {
+					enemyBullets.push({
+						x: boss.x + (i * 20),
+						y: boss.y + boss.height / 2,
+						width: 5,
+						height: 10,
+						speed: 3 + Math.random(),
+						angle: Math.PI/2 + (i * Math.PI/12) // Spread pattern
+					});
+				}
+				boss.lastShot = now;
+			}
+			
+			// Missile shots
+			if (now - lastBossMissile >= bossMissileDelay) {
+				try {
+					console.log("Creating boss missile...");
+					// Create a missile enemy that follows the player
+					const missile = {
+						x: boss.x,
+						y: boss.y + boss.height / 2,
+						width: 40, // Larger to match the new image
+						height: 40, // Larger to match the new image
+						hp: 4,
+						speed: 0.7,
+						isMissile: true,
+						points: 20,
+						// Animation properties
+						animFrame: 0,
+						animTimer: now,
+						isOhjus: true  // Flag to identify as ohjus missile
+					};
+					
+					// Make sure all required properties are set
+					if (isNaN(missile.x) || isNaN(missile.y)) {
+						console.error("Invalid missile position:", missile.x, missile.y);
+						// Use default values if boss position is invalid
+						missile.x = canvas.width / 2;
+						missile.y = 100;
+					}
+					
+					enemies.push(missile);
+					lastBossMissile = now;
+					console.log("Missile created successfully");
+				} catch (error) {
+					console.error("Error creating boss missile:", error);
+					lastBossMissile = now; // Still update timer to prevent continuous errors
+				}
+			}
+		}
+
+		// Add this function to update boss movement
+		function updateBoss() {
+			if (!boss) return;
+			
+			const now = Date.now();
+			
+			// Check if it's time to switch patterns
+			if (now - boss.patternTimer >= boss.patternDuration) {
+				boss.movePattern = (boss.movePattern + 1) % 3; // Toggle between 3 patterns
+				boss.patternTimer = now;
+			}
+			
+			// Pattern 0: Horizontal movement
+			if (boss.movePattern === 0) {
+				boss.x += boss.moveSpeed * boss.moveDirection;
+				
+				// Bounce at edges
+				if (boss.x > canvas.width - boss.width/2 || boss.x < boss.width/2) {
+					boss.moveDirection *= -1;
+				}
+			}
+			// Pattern 1: Diagonal movement
+			else if (boss.movePattern === 1) {
+				boss.x += boss.moveSpeed * boss.moveDirection;
+				boss.y += Math.sin(now / 500) * 2; // Wavy up-down movement
+				
+				// Bounce at edges
+				if (boss.x > canvas.width - boss.width/2 || boss.x < boss.width/2) {
+					boss.moveDirection *= -1;
+				}
+				
+				// Keep within vertical bounds
+				boss.y = Math.max(50, Math.min(canvas.height / 3, boss.y));
+			}
+			// Pattern 2: "Charge" at player
+			else if (boss.movePattern === 2) {
+				const targetX = player.x;
+				const dx = targetX - boss.x;
+				boss.x += (dx * 0.02); // Move 2% of the way to player each frame
+				
+				// Slow up/down movement during this pattern
+				boss.y = 80 + Math.sin(now / 1000) * 30;
+			}
+			
+			// Boss shooting
+			bossShooting();
+			
+			// Check for player collision with boss
+			if (checkCollision({
+				x: boss.x - boss.width/2,
+				y: boss.y - boss.height/2,
+				width: boss.width,
+				height: boss.height
+			}, {
+				x: player.x - player.size/2,
+				y: player.y - player.size/2,
+				width: player.size,
+				height: player.size
+			})) {
+				player.hp -= 20;
+				if (player.hp <= 0) {
+					endGame();
+				}
+			}
+		}
+
+		// Add this function to draw the boss
+		function drawBoss() {
+			if (!boss) return;
+			
+			// Update animation frame
+			const now = Date.now();
+			if (now - bossAnimationTimer > bossFrameDuration) {
+				bossAnimationFrame = (bossAnimationFrame + 1) % bossFrameCount;
+				bossAnimationTimer = now;
+			}
+			
+			// Draw boss with animation
+			if (window.bossImage.complete) {
+				// Calculate the source y position based on current frame
+				// For vertical sprite sheet, x stays at 0 but y changes
+				const sourceY = bossAnimationFrame * bossFrameHeight;
+				
+				// Draw the current frame
+				ctx.drawImage(
+					window.bossImage,
+					0, sourceY, bossFrameWidth, bossFrameHeight, // Source rectangle (x, y, width, height)
+					boss.x - boss.width/2, boss.y - boss.height/2,   // Destination position
+					boss.width, boss.height                         // Destination size
+				);
+			} else {
+				// Fallback if image isn't loaded
+				ctx.fillStyle = '#ff0000';
+				ctx.beginPath();
+				ctx.arc(boss.x, boss.y, boss.width/2, 0, Math.PI * 2);
+				ctx.fill();
+				
+				// Evil eyes
+				ctx.fillStyle = 'black';
+				ctx.beginPath();
+				ctx.arc(boss.x - 15, boss.y - 10, 8, 0, Math.PI * 2);
+				ctx.arc(boss.x + 15, boss.y - 10, 8, 0, Math.PI * 2);
+				ctx.fill();
+				
+				// Evil mouth
+				ctx.beginPath();
+				ctx.arc(boss.x, boss.y + 10, 20, 0, Math.PI);
+				ctx.stroke();
+			}
+			
+			// Draw boss HP bar
+			const hpBarWidth = boss.width * 1.5;
+			const hpBarHeight = 8;
+			const hpPercentage = boss.hp / boss.maxHp;
+			
+			// HP Bar background
+			ctx.fillStyle = '#333';
+			ctx.fillRect(boss.x - hpBarWidth/2, boss.y - boss.height/2 - 15, hpBarWidth, hpBarHeight);
+			
+			// HP Bar fill
+			ctx.fillStyle = `rgb(${255 * (1 - hpPercentage)}, ${255 * hpPercentage}, 0)`;
+			ctx.fillRect(boss.x - hpBarWidth/2, boss.y - boss.height/2 - 15, hpBarWidth * hpPercentage, hpBarHeight);
+		}
+// Add this function to animate the main character on the start screen
+function animateMainCharacter() {
+    if (currentScreen !== "start") return;
+    
+    const animCanvas = document.getElementById('characterAnimCanvas');
+    if (!animCanvas) return;
+    
+    const animCtx = animCanvas.getContext('2d');
+    
+    // Update animation frame
+    const now = Date.now();
+    if (now - mainCharacterAnimTimer > mainCharacterFrameDuration) {
+        mainCharacterAnimFrame = (mainCharacterAnimFrame + 1) % mainCharacterFrameCount;
+        mainCharacterAnimTimer = now;
+    }
+    
+    // Clear the canvas - don't clear it here as we're using the stars as background
+    animCtx.clearRect(0, 0, animCanvas.width, animCanvas.height);
+    
+    // Draw the current frame if image is loaded
+    if (window.mainCharacterAnimImage.complete) {
+        // Draw the current frame from the sprite sheet
+        animCtx.drawImage(
+            window.mainCharacterAnimImage,
+            0, mainCharacterAnimFrame * (mainCharacterFrameHeight / mainCharacterFrameCount), 
+            mainCharacterFrameWidth, mainCharacterFrameHeight / mainCharacterFrameCount,
+            0, 0,
+            animCanvas.width, animCanvas.height
+        );
+    }
+    
+    // Continue animation
+    requestAnimationFrame(animateMainCharacter);
+	// Initialize the start button too
+    updateStartButton();
+}
+function updateStartButton() {
+	// Ensure start button image exists
+	if (!window.startButtonImage) {
+		window.startButtonImage = new Image();
+		window.startButtonImage.src = 'start.png';
+		console.log("Created missing start button image");
+	}
+    if (!window.startButtonImage || !window.startButtonImage.complete) {
+        console.log("Start button image not ready yet");
+        // Try again in a moment
+        setTimeout(updateStartButton, 100);
+        return;
+    }
+    
+    const buttonCanvas = document.getElementById('startButtonCanvas');
+    if (!buttonCanvas) {
+        console.error("Start button canvas not found");
+        return;
+    }
+    
+    // Get the canvas context and clear it
+    const buttonCtx = buttonCanvas.getContext('2d');
+    buttonCtx.clearRect(0, 0, buttonCanvas.width, buttonCanvas.height);
+    
+    // Calculate frame position in the sprite sheet
+    const frameWidth = 670;
+    const frameHeight = 250;
+    
+    try {
+        // Draw the current frame
+        buttonCtx.drawImage(
+            window.startButtonImage,
+            0, startButtonFrame * frameHeight, 
+            frameWidth, frameHeight,        
+            0, 0,                          
+            buttonCanvas.width, buttonCanvas.height
+        );
+        
+        // If we're animating, update the frame
+        if (startButtonAnimating) {
+            const elapsed = Date.now() - startButtonTimer;
+            const progress = Math.min(elapsed / startButtonAnimationDuration, 1);
+            
+            // Map progress (0-1) to frames (1-16)
+            // Calculate which frame to show (frames 1-16 represent progress)
+            const targetFrame = Math.min(Math.floor(progress * 15) + 1, 16);
+            
+            // Update frame if it changed
+            if (targetFrame !== startButtonFrame) {
+                startButtonFrame = targetFrame;
+                console.log("Button animation frame:", startButtonFrame);
+            }
+            
+            // If animation completed, start the game
+            if (progress >= 1) {
+                console.log("Button animation complete, starting game");
+                startButtonAnimating = false;
+                startGame();
+                return;
+            }
+            
+            // Continue the animation
+            requestAnimationFrame(updateStartButton);
+        }
+    } catch (e) {
+        console.error("Error drawing start button:", e);
+        // Fallback drawing code
+        buttonCtx.fillStyle = '#4CAF50';
+        buttonCtx.fillRect(0, 0, buttonCanvas.width, buttonCanvas.height);
+        buttonCtx.fillStyle = 'white';
+        buttonCtx.font = '20px Arial';
+        buttonCtx.textAlign = 'center';
+        buttonCtx.fillText('HOLD TO START', buttonCanvas.width/2, buttonCanvas.height/2 + 7);
+    }
+}
+function updateRestartButton() {
+    console.log("updateRestartButton called, canvas exists:", !!document.getElementById('restartButtonCanvas'));
+    
+    if (!window.startButtonImage || !window.startButtonImage.complete) {
+        console.log("Button image not ready yet for restart button");
+        // Try again in a moment
+        setTimeout(updateRestartButton, 100);
+        return;
+    }
+    
+    const buttonCanvas = document.getElementById('restartButtonCanvas');
+    if (!buttonCanvas) {
+        console.error("Restart button canvas not found");
+        return;
+    }
+    
+    // Get the canvas context and clear it
+    const buttonCtx = buttonCanvas.getContext('2d');
+    buttonCtx.clearRect(0, 0, buttonCanvas.width, buttonCanvas.height);
+    
+    // Calculate frame position in the sprite sheet
+    const frameWidth = 670;
+    const frameHeight = 250;
+    
+    try {
+        // Always draw frame 0 when not animating
+        if (!restartButtonAnimating) {
+            restartButtonFrame = 0;
+        }
+        
+        // Draw the current frame
+        buttonCtx.drawImage(
+            window.startButtonImage,
+            0, restartButtonFrame * frameHeight, 
+            frameWidth, frameHeight,
+            0, 0,
+            buttonCanvas.width, buttonCanvas.height
+        );
+        
+        // If we're animating, update the frame
+        if (restartButtonAnimating) {
+            const elapsed = Date.now() - restartButtonTimer;
+            const progress = Math.min(elapsed / startButtonAnimationDuration, 1);
+            
+            // Map progress (0-1) to frames (1-16)
+            const targetFrame = Math.min(Math.floor(progress * 15) + 1, 16);
+            
+            // Update frame if it changed
+            if (targetFrame !== restartButtonFrame) {
+                restartButtonFrame = targetFrame;
+                console.log("Restart button frame:", restartButtonFrame);
+            }
+            
+            // If animation completed, restart the game
+            if (progress >= 1) {
+                console.log("Restart button animation complete, restarting game");
+                restartButtonAnimating = false;
+                restartGame();
+                return;
+            }
+            
+            // Continue the animation
+            requestAnimationFrame(updateRestartButton);
+        }
+    } catch (e) {
+        console.error("Error drawing restart button:", e);
+        // Fallback if drawing fails
+        buttonCtx.fillStyle = '#4CAF50';
+        buttonCtx.fillRect(0, 0, buttonCanvas.width, buttonCanvas.height);
+        buttonCtx.fillStyle = 'white';
+        buttonCtx.font = '20px Arial';
+        buttonCtx.textAlign = 'center';
+        buttonCtx.fillText('HOLD TO RESTART', buttonCanvas.width/2, buttonCanvas.height/2 + 7);
+    }
+}
+function createExplosion(x, y, size = 1.0) {
+    // Create a new explosion at the given coordinates
+    // size parameter controls how big the explosion appears (1.0 = normal, 0.5 = half size)
+    explosions.push({
+        x: x,
+        y: y,
+        frame: 0,
+        startTime: Date.now(),
+        active: true,
+        size: size
+    });
+}
+function updateAndDrawExplosions() {
+    const now = Date.now();
+    
+    // Loop through all active explosions
+    for (let i = explosions.length - 1; i >= 0; i--) {
+        const explosion = explosions[i];
+        
+        // Calculate progress through animation
+        const elapsed = now - explosion.startTime;
+        const progress = Math.min(elapsed / explosionDuration, 1);
+        
+        // Calculate current frame based on progress
+        explosion.frame = Math.min(Math.floor(progress * explosionFrameCount), explosionFrameCount - 1);
+        
+        // Draw the current explosion frame
+        if (window.explosionImage.complete) {
+            ctx.drawImage(
+				window.explosionImage,
+				0, explosion.frame * explosionFrameHeight, 
+				explosionFrameWidth, explosionFrameHeight,
+				explosion.x - (explosionFrameWidth/4 * explosion.size), 
+				explosion.y - (explosionFrameHeight/4 * explosion.size),
+				explosionFrameWidth/2 * explosion.size, 
+				explosionFrameHeight/2 * explosion.size
+			);
+        }
+        
+        // Remove explosion if animation is complete
+        if (progress >= 1) {
+            explosions.splice(i, 1);
+        }
+    }
+}
+function endGame() {
+    isGameRunning = false;
+    cancelAnimationFrame(gameLoop);
+    finalScoreElement.textContent = score;
+    gameStats.style.display = 'none';
+    gameOverScreen.style.display = 'block';
+    
+    
+    // Make sure the restart button is properly initialized
+    restartButtonFrame = 0;
+    restartButtonAnimating = false;
+    
+    // Use a longer delay to ensure DOM is fully updated before drawing
+    setTimeout(function() {
+        console.log("Initializing restart button after game over");
+        updateRestartButton();
+        
+        // Call it again after a short delay to ensure it's visible
+        setTimeout(updateRestartButton, 100);
+    }, 300);
+}
+        function spawnCircularGroup() {
+            const groupCenterX = canvas.width / 2;
+            const groupCenterY = -140;
+            const radius = 140;
+            
+            circularGroup = {
+                centerX: groupCenterX,
+                centerY: groupCenterY,
+                radius: radius,
+                angle: 0,
+                rotationSpeed: 0.005,
+                moveSpeed: 0.3,
+                members: []
+            };
+            // Spawn 10 enemies in a circle
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI * 2) / 6;
+                const enemy = {
+                    baseAngle: angle,
+                    x: groupCenterX + Math.cos(angle) * radius,
+                    y: groupCenterY + Math.sin(angle) * radius,
+                    width: 22,
+                    height: 22,
+                    hp: 2,
+                    points: 15,
+                    isCircular: true
+                };
+                circularGroup.members.push(enemy);
+                enemies.push(enemy);
+            }
+        }
+        function updateCircularGroup() {
+            if (!circularGroup) return;
+            // Update group position
+            circularGroup.centerY += circularGroup.moveSpeed;
+            circularGroup.angle += circularGroup.rotationSpeed;
+            // Update each member's position
+            circularGroup.members.forEach((enemy, index) => {
+                const angle = enemy.baseAngle + circularGroup.angle;
+                enemy.x = circularGroup.centerX + Math.cos(angle) * circularGroup.radius;
+                enemy.y = circularGroup.centerY + Math.sin(angle) * circularGroup.radius;
+            });
+            // Remove group if it's off screen
+            if (circularGroup.centerY > canvas.height + circularGroup.radius * 2) {
+                circularGroup.members.forEach(member => {
+                    const index = enemies.indexOf(member);
+                    if (index > -1) {
+                        enemies.splice(index, 1);
+                    }
+                });
+                circularGroup = null;
+            }
+            // Or if all members are destroyed
+            else if (circularGroup.members.every(m => !enemies.includes(m))) {
+                circularGroup = null;
+            }
+        }
+        function spawnEnemy() {
+			// Check if it's time to spawn a circular group
+			const now = Date.now();
+			if (!circularGroup && now - lastGroupSpawn >= groupSpawnDelay && gameTime >= 36) {
+				spawnCircularGroup();
+				lastGroupSpawn = now;
+				return;
+			}
+			
+			// Check if game time is past 10 seconds for shooting enemies
+			const canSpawnShootingEnemy = gameTime >= 10;
+			
+			// Regular enemy spawn logic - only allow shooting enemies after 10 seconds
+			const isShootingEnemy = canSpawnShootingEnemy && Math.random() < 0.3;
+			
+			// Add margin to prevent enemies from spawning too close to the edges
+			const edgeMargin = 40;
+			
+			const enemy = {
+				x: edgeMargin + Math.random() * (canvas.width - (edgeMargin * 2)),
+				y: -20,
+				width: 22,
+				height: 22,
+				speed: isShootingEnemy ? 0.8 : 1.1,
+				hp: isShootingEnemy ? 2 : 2,
+				points: isShootingEnemy ? 20 : 10,
+				isShooting: isShootingEnemy,
+				lastShot: 0,
+				shootingDelay: 2000,
+				// Add rotation properties
+				angle: 0,
+				rotationSpeed: (Math.random() * 0.05) + 0.01, // Small random rotation speed
+				hitboxScale: 1.5 // Make hitbox 1.5x larger than visual
+			};
+			enemies.push(enemy);
+		}
+		// Add this function to spawn the powerup
+function spawnPowerup(x, y) {
+    // Don't spawn if another powerup already exists
+    if (powerup) return;
+    // Calculate available powerup types based on what player already has
+    let availableTypes = [];
+    let totalChance = 0;
+    
+    // Only add powerup types that player doesn't already have
+    if (!dualFireActive) {
+        availableTypes.push({
+            type: POWERUP_TYPES.DUAL_FIRE,
+            chance: POWERUP_TYPES.DUAL_FIRE.chance
+        });
+        totalChance += POWERUP_TYPES.DUAL_FIRE.chance;
+    }
+    
+    if (!shieldActive) {
+        availableTypes.push({
+            type: POWERUP_TYPES.SHIELD,
+            chance: POWERUP_TYPES.SHIELD.chance
+        });
+        totalChance += POWERUP_TYPES.SHIELD.chance;
+    }
+    
+    // Only add Rapid Fire if player doesn't already have it
+	if (!rapidFireActive) {
+		availableTypes.push({
+			type: POWERUP_TYPES.RAPID_FIRE,
+			chance: POWERUP_TYPES.RAPID_FIRE.chance
+		});
+		totalChance += POWERUP_TYPES.RAPID_FIRE.chance;
+	}
+    
+    // If no powerups are available (player has everything), don't spawn
+    if (availableTypes.length === 0 || totalChance === 0) {
+        return;
+    }
+    
+    // Randomly select a powerup type based on available chances
+    let random = Math.random() * totalChance;
+    let selectedType = null;
+    
+    for (let i = 0; i < availableTypes.length; i++) {
+        random -= availableTypes[i].chance;
+        if (random <= 0) {
+            selectedType = availableTypes[i].type;
+            break;
+        }
+    }
+    
+    // Fallback if no type selected (shouldn't happen)
+    if (!selectedType) {
+        selectedType = availableTypes[0].type;
+    }
+    
+    powerup = {
+        x: x,
+        y: y,
+        width: 30, // Slightly larger
+        height: 30, // Slightly larger
+        speed: 1.2,
+        type: selectedType.id,
+        spawnTime: Date.now() // Track when it was spawned
+    };
+    
+    powerupSpawned = true;
+}
+
+function updatePowerup() {
+    if (!powerup) return;
+    
+    powerup.y += powerup.speed;
+    
+    // Check if player collected the powerup
+    if (checkCollision(powerup, {
+        x: player.x - player.size/2,
+        y: player.y - player.size/2,
+        width: player.size,
+        height: player.size
+    })) {
+        // Handle different powerup types
+        let appliedPowerup = true;
+        
+        switch(powerup.type) {
+            case POWERUP_TYPES.RAPID_FIRE.id:
+                // Always apply rapid fire
+                rapidFireActive = true;
+                rapidFireBulletsLeft = 100;
+				pointsAwarded = 200;
+                break;
+                
+            case POWERUP_TYPES.SHIELD.id:
+                // Only apply shield if player doesn't already have one
+                if (!shieldActive) {
+                    shieldActive = true;
+                    shieldHealth = 1;
+					pointsAwarded = 200;
+                } else {
+                    // Already has shield, give points instead
+                    pointsAwarded = 200;
+                    appliedPowerup = false;
+                }
+                break;
+                
+            case POWERUP_TYPES.DUAL_FIRE.id:
+                // Always apply dual fire (stacks with rapid fire)
+                dualFireActive = true;
+				pointsAwarded = 200;
+                break;
+        }
+		
+		// Add points based on what happened
+		score += pointsAwarded;
+		scoreElement.textContent = score;
+        
+        // Show pickup effect
+        createExplosion(powerup.x, powerup.y, 0.5);
+        
+        // Show what powerup was collected
+        if (appliedPowerup) {
+            let message = "";
+            switch(powerup.type) {
+                case POWERUP_TYPES.RAPID_FIRE.id:
+                    message = "RAPID FIRE!";
+                    break;
+                case POWERUP_TYPES.SHIELD.id:
+                    message = "SHIELD!";
+                    break;
+                case POWERUP_TYPES.DUAL_FIRE.id:
+                    message = "DUAL FIRE!";
+                    break;
+            }
+            
+            // Show floating text
+            // (Could implement this later)
+        }
+        
+        // Remove the powerup
+        powerup = null;
+    }
+    
+    // Remove if offscreen
+    if (powerup && powerup.y > canvas.height) {
+        powerup = null;
+    }
+}
+
+	// Add this function to draw the powerup
+function drawPowerup() {
+    if (!powerup) return;
+    
+    // Save the context for transformations
+    ctx.save();
+    
+    // Get color based on powerup type
+    let powerupColor;
+    switch(powerup.type) {
+        case POWERUP_TYPES.RAPID_FIRE.id:
+            powerupColor = POWERUP_TYPES.RAPID_FIRE.color; // Gold/yellow
+            break;
+        case POWERUP_TYPES.SHIELD.id:
+            powerupColor = POWERUP_TYPES.SHIELD.color; // Blue
+            break;
+        case POWERUP_TYPES.DUAL_FIRE.id:
+            powerupColor = POWERUP_TYPES.DUAL_FIRE.color; // Purple/Magenta
+            break;
+        default:
+            powerupColor = '#FFFFFF';
+    }
+    
+    // Add a pulsing glow effect
+    ctx.globalAlpha = 0.6 + Math.sin(Date.now() / 150) * 0.3;
+    
+    // Draw the powerup with colored tint
+    if (window.powerupImage && window.powerupImage.complete) {
+        // First draw a colored glow underneath
+        ctx.beginPath();
+        ctx.arc(powerup.x, powerup.y, powerup.width * 1.2, 0, Math.PI * 2);
+        ctx.fillStyle = powerupColor;
+        ctx.fill();
+        
+        // Draw the actual powerup image
+        ctx.globalAlpha = 1.0;
+        ctx.drawImage(
+            window.powerupImage,
+            powerup.x - powerup.width/2,
+            powerup.y - powerup.width/2,
+            powerup.width,
+            powerup.width
+        );
+        
+        // Apply a color overlay
+        ctx.globalCompositeOperation = 'color';
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = powerupColor;
+        ctx.fillRect(
+            powerup.x - powerup.width/2,
+            powerup.y - powerup.width/2,
+            powerup.width,
+            powerup.width
+        );
+    } else {
+        // Fallback if image isn't loaded
+        ctx.beginPath();
+        ctx.arc(powerup.x, powerup.y, powerup.width/2, 0, Math.PI * 2);
+        ctx.fillStyle = powerupColor;
+        ctx.fill();
+    }
+    
+    // Restore the context
+    ctx.restore();
+}
+
+	// Modify the shoot function to handle rapid fire
+	function shoot() {
+		const now = Date.now();
+		const currentShootingDelay = rapidFireActive ? rapidFireShootingDelay : shootingDelay;
+		
+		if (now - lastShot >= currentShootingDelay) {
+			// Different shooting patterns based on active powerups
+			if (dualFireActive) {
+				// Dual fire - two bullets side by side
+				const offset = 8; // Space between bullets
+				player.bullets.push({
+					x: player.x - offset,
+					y: player.y,
+					width: 3,
+					height: 8,
+					speed: 7
+				});
+				player.bullets.push({
+					x: player.x + offset,
+					y: player.y,
+					width: 3,
+					height: 8,
+					speed: 7
+				});
+			} else {
+				// Regular single fire
+				player.bullets.push({
+					x: player.x,
+					y: player.y,
+					width: 3,
+					height: 8,
+					speed: 7
+				});
+			}
+			
+			lastShot = now;
+			
+			// Track rapid fire bullets
+			if (rapidFireActive) {
+				rapidFireBulletsLeft--;
+				
+				// End powerup if bullets are used up
+				if (rapidFireBulletsLeft <= 0) {
+					rapidFireActive = false;
+				}
+			}
+		}
+	}
+
+        function enemyShoot(enemy) {
+            const now = Date.now();
+            if (now - enemy.lastShot >= enemy.shootingDelay) {
+                enemyBullets.push({
+                    x: enemy.x + enemy.width / 2,
+                    y: enemy.y + enemy.height,
+                    width: 6,
+                    height: 12,
+                    speed: 2.5
+                });
+                enemy.lastShot = now;
+            }
+        }
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+function updateBullets() {
+    for (let i = player.bullets.length - 1; i >= 0; i--) {
+        const bullet = player.bullets[i];
+        bullet.y -= bullet.speed;
+        
+        if (bullet.y < 0) {
+            player.bullets.splice(i, 1);
+            continue;
+        }
+        
+        // Check for boss hit
+        if (boss && checkCollision(bullet, {
+            x: boss.x - boss.width/2,
+            y: boss.y - boss.height/2,
+            width: boss.width,
+            height: boss.height
+        })) {
+            boss.hp--;
+			// Create a small explosion where the bullet hit
+			createExplosion(bullet.x, bullet.y, 0.4);
+            player.bullets.splice(i, 1);
+            
+            // Boss death
+            if (boss.hp <= 0) {
+                // Start explosion animation instead of instant damage
+                explosionAnimation = {
+                    centerX: boss.x,
+                    centerY: boss.y,
+                    radius: 10,
+                    startTime: Date.now(),
+                    duration: 5000, // 5 seconds
+                    completed: false
+                };
+                
+                boss = null;
+                score += 1000; // Big points for defeating boss
+                continue;
+            }
+            continue;
+        }
+        
+        // Regular enemy hit check
+        // Regular enemy hit check
+		for (let j = enemies.length - 1; j >= 0; j--) {
+			const enemy = enemies[j];
+			
+			// Apply larger hitbox for enemy collision
+			let hitboxWidth = enemy.width;
+			let hitboxHeight = enemy.height;
+			
+			// Apply larger hitbox for non-spinner enemies
+			if (!enemy.isSpinner && !enemy.isMissile) {
+				hitboxWidth *= enemy.hitboxScale || 1.5;
+				hitboxHeight *= enemy.hitboxScale || 1.5;
+			}
+			
+			if (checkCollision(bullet, {
+				x: enemy.x - hitboxWidth/2,
+				y: enemy.y - hitboxHeight/2,
+				width: hitboxWidth,
+				height: hitboxHeight
+			})) {
+				enemy.hp--;
+				// Create a small explosion where the bullet hit
+				createExplosion(bullet.x, bullet.y, 0.4);
+				player.bullets.splice(i, 1);
+				
+				if (enemy.hp <= 0) {
+					score += enemy.points;
+					scoreElement.textContent = score;
+					
+					// Chance to spawn a powerup ONLY when defeating an enemy with bullets
+					// (not by collision with player) AND no other powerup is on screen
+					if (!powerup && Math.random() < POWERUP_SPAWN_RATE) {
+						spawnPowerup(enemy.x, enemy.y);
+					}
+					
+					enemies.splice(j, 1);
+					if (circularGroup) {
+						circularGroup.members = circularGroup.members.filter(m => m !== enemy);
+					}
+				}
+				break;
+			}
+		}
+    }
+}
+function updateEnemyBullets() {
+    for (let i = enemyBullets.length - 1; i >= 0; i--) {
+        const bullet = enemyBullets[i];
+        bullet.y += bullet.speed;
+        
+        if (bullet.y > canvas.height) {
+            enemyBullets.splice(i, 1);
+            continue;
+        }
+        
+        // Check player collision with bullet
+        if (!playerInvulnerable && checkCollision(bullet, {
+			x: player.x - player.size/2,
+			y: player.y - player.size/2,
+			width: player.size,
+			height: player.size
+		})) {
+			// Check if shield is active
+			if (shieldActive) {
+				// Shield absorbs the hit
+				shieldActive = false;
+				createExplosion(player.x, player.y, 0.8); // Shield break effect
+			} else {
+				// No shield, take damage normally
+				player.hp -= 5; // Bullet damage
+			}
+			// Create a small explosion where the bullet hit
+			createExplosion(bullet.x, bullet.y, 0.5);
+            hpElement.textContent = player.hp;
+            enemyBullets.splice(i, 1);
+            
+            if (player.hp <= 0) {
+                endGame();
+            }
+        }
+    }
+}
+ 
+		function updateExplosion() {
+    if (!explosionAnimation) return;
+    
+    const now = Date.now();
+    const elapsed = now - explosionAnimation.startTime;
+    const progress = Math.min(elapsed / explosionAnimation.duration, 1);
+	
+	// If animation is complete, don't render anything else
+    if (progress >= 1) {
+        if (!explosionAnimation.completed) {
+            explosionAnimation.completed = true;
+            
+            // Defeat player when animation completes
+            player.hp -= 100;
+            hpElement.textContent = player.hp;
+            if (player.hp <= 0) {
+                endGame();
+            }
+        }
+        // Don't continue with rendering if animation is done
+        return;
+    }
+    
+    // Calculate expanding radius - make it larger to ensure it covers the whole screen
+    const maxRadius = Math.sqrt(canvas.width * canvas.width + canvas.height * canvas.height) * 1.5;
+    explosionAnimation.radius = progress * maxRadius;
+    
+    // Create a brighter, more intense explosion
+    // Start with pure white, then add a yellow/orange glow at the end
+    const brightness = 1 - (progress * 0.3); // Stays brighter longer
+    
+    // Create a pulsing effect for added intensity
+    const pulse = Math.sin(progress * 10) * 0.1 * (1 - progress) + 1;
+	
+    // Draw the explosion in a layer above everything else
+    // First draw a bright white center that covers the entire screen
+    ctx.fillStyle = `rgba(255, 255, 255, ${brightness * pulse})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height); // Cover the entire screen	
+    
+    // Then draw the expanding circle with a glow
+    const gradient = ctx.createRadialGradient(
+        explosionAnimation.centerX, explosionAnimation.centerY, 0,
+        explosionAnimation.centerX, explosionAnimation.centerY, explosionAnimation.radius
+    );
+    
+    gradient.addColorStop(0, `rgba(255, 255, 255, ${brightness * 0.9})`);
+    gradient.addColorStop(0.6, `rgba(255, 255, 200, ${brightness * 0.7})`);
+    gradient.addColorStop(0.8, `rgba(255, 170, 100, ${brightness * 0.5})`);
+    gradient.addColorStop(1, `rgba(255, 100, 50, ${brightness * 0.3})`);
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(explosionAnimation.centerX, explosionAnimation.centerY, 
+            explosionAnimation.radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Add visual feedback - random smaller "sparkles" for dramatic effect
+    if (progress < 0.8) {
+        for (let i = 0; i < 5; i++) {
+            const sparkX = explosionAnimation.centerX + (Math.random() - 0.5) * explosionAnimation.radius * progress;
+            const sparkY = explosionAnimation.centerY + (Math.random() - 0.5) * explosionAnimation.radius * progress;
+            const sparkSize = 20 + Math.random() * 50;
+            
+            ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+            ctx.beginPath();
+            ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    
+    // Check if animation is complete
+    if (elapsed >= explosionAnimation.duration && !explosionAnimation.completed) {
+        explosionAnimation.completed = true;
+        
+        // Defeat player when animation completes
+        player.hp -= 100;
+        if (player.hp <= 0) {
+            endGame();
+        }
+    }
+}
+        function updateEnemies() {
+			// Only spawn regular enemies if boss isn't active, not disabled, and enemy spawning is active
+			if (enemySpawningActive && !regularEnemiesDisabled && enemies.length < 5 && Math.random() < 0.02) {
+				// Check if game time is past 1 minute (60 seconds) and add chance for spinner
+				if (gameTime >= 60 && Math.random() < 0.2) { // 20% chance to spawn spinner instead of regular enemy
+					// Spawn spinner enemy
+					const spinnerEnemy = {
+						x: Math.random() * (canvas.width - 30) + 15,
+						y: 60, // Slightly below the top
+						width: 24,
+						height: 24,
+						hp: 8, // Tougher than regular enemies
+						speed: 4, // Fast when launched
+						points: 50, // Worth more points
+						isSpinner: true,
+						spinTimer: Date.now(),
+						spinDuration: 3000, // 3 seconds of spinning
+						angle: 0, // Current rotation angle
+						launched: false
+					};
+					enemies.push(spinnerEnemy);
+				} else {
+					spawnEnemy();
+				}
+			}
+			
+			updateCircularGroup();
+			
+			for (let i = enemies.length - 1; i >= 0; i--) {
+				const enemy = enemies[i];
+				
+				if (!enemy.isSpinner) { // Don't modify spinner enemies since they have their own rotation
+					enemy.angle += enemy.rotationSpeed;
+				}
+				
+				if (enemy.isSpinner) {
+					// Increase rotation angle
+					enemy.angle += 0.1; // Rotation speed
+					
+					// Check if it's time to launch
+					const now = Date.now();
+					if (!enemy.launched && now - enemy.spinTimer >= enemy.spinDuration) {
+						enemy.launched = true;
+						
+						// Calculate direction to player
+						const dx = player.x - enemy.x;
+						const dy = player.y - enemy.y;
+						const distance = Math.sqrt(dx * dx + dy * dy);
+						
+						// Store normalized direction
+						if (distance > 0) {
+							enemy.dirX = dx / distance;
+							enemy.dirY = dy / distance;
+						} else {
+							enemy.dirX = 0;
+							enemy.dirY = 1; // Default downward
+						}
+					}
+					
+					// Move if launched
+					if (enemy.launched) {
+						enemy.x += enemy.dirX * enemy.speed;
+						enemy.y += enemy.dirY * enemy.speed;
+					}
+				}
+				else if (enemy.isMissile) {
+					// Calculate direction to player for homing
+					const dx = player.x - enemy.x;
+					const dy = player.y - enemy.y;
+					const distance = Math.sqrt(dx * dx + dy * dy);
+					
+					// Update position
+					if (distance > 0) {
+						enemy.x += (dx / distance) * enemy.speed;
+						enemy.y += (dy / distance) * enemy.speed;
+					} else {
+						enemy.y += enemy.speed;
+					}
+					
+					// Update animation frame for ohjus missiles
+					try {
+						if (enemy.isOhjus) {
+							const now = Date.now();
+							if (!enemy.animTimer) enemy.animTimer = now;
+							if (!enemy.animFrame) enemy.animFrame = 0;
+							
+							if (now - enemy.animTimer > ohjusFrameDuration) {
+								enemy.animFrame = (enemy.animFrame + 1) % ohjusFrameCount;
+								enemy.animTimer = now;
+							}
+						}
+					} catch (error) {
+						console.error("Error updating missile animation:", error);
+						// Initialize animation values if missing
+						enemy.animFrame = 0;
+						enemy.animTimer = Date.now();
+					}
+				}
+				// Handle regular and shooting enemies
+				else if (!enemy.isCircular) {
+					enemy.y += enemy.speed;
+					
+					// Make shooting enemies shoot
+					if (enemy.isShooting) {
+						enemyShoot(enemy);
+					}
+				}
+				
+				// Check for collision with player for all enemy types
+				if (!playerInvulnerable && checkCollision(enemy, {
+					x: player.x - player.size/2,
+					y: player.y - player.size/2,
+					width: player.size,
+					height: player.size
+				})) {
+					// Calculate damage based on enemy type
+					let damage = 10; // Default damage
+					if (enemy.isSpinner && enemy.launched) {
+						damage = 30; // Spinner deals 30 damage when launched
+					} else if (enemy.isMissile) {
+						damage = 15; // Missiles deal 15 damage
+					}
+					
+					// Check if shield is active
+					if (shieldActive) {
+						// Shield absorbs the hit
+						shieldActive = false;
+						createExplosion(player.x, player.y, 0.8); // Shield break effect
+					} else {
+						// No shield, take damage normally
+						player.hp -= damage;
+					}
+					
+					// Add explosion at the collision point
+					createExplosion(enemy.x, enemy.y);
+					
+					// Mark that this enemy was destroyed by collision, not by bullets
+					// (so no powerup will spawn from this enemy)
+					enemy.destroyedByCollision = true;
+					
+					enemies.splice(i, 1);
+					if (circularGroup) {
+						circularGroup.members = circularGroup.members.filter(m => m !== enemy);
+					}
+					if (player.hp <= 0) {
+						endGame();
+					}
+					continue;
+				}
+				
+				// Check if enemy is off-screen
+				if ((!enemy.isCircular && !enemy.isMissile && !enemy.isSpinner && enemy.y > canvas.height + enemy.height) ||
+					(enemy.isSpinner && enemy.launched && (enemy.x < -50 || enemy.x > canvas.width + 50 || enemy.y < -50 || enemy.y > canvas.height + 50))) {
+					enemies.splice(i, 1);
+					if (circularGroup) {
+						circularGroup.members = circularGroup.members.filter(m => m !== enemy);
+					}
+				}
+			}
+		}
+
+function drawEnemies() {
+    enemies.forEach(enemy => {
+        if (enemy.isSpinner) {
+            // Save context for rotation
+            ctx.save();
+            ctx.translate(enemy.x, enemy.y);
+            ctx.rotate(enemy.angle);
+            
+            // Draw the spinner with the image
+            const size = enemy.width * 2.2; // Adjust size as needed
+            
+            // Draw the spinning star image
+            ctx.drawImage(window.spinnerEnemyImage, 
+                -size/2, -size/2,
+                size, size);
+            
+            // If not launched yet, add a pulsing effect
+            if (!enemy.launched) {
+                // Pulsing overlay while charging
+                const pulse = Math.sin(Date.now() / 100) * 0.3 + 0.4;
+                ctx.fillStyle = `rgba(255, 255, 0, ${pulse})`;
+                ctx.globalCompositeOperation = 'overlay';
+                ctx.beginPath();
+                ctx.arc(0, 0, size/2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Restore context
+            ctx.restore();
+        }
+        else if (enemy.isMissile) {
+			try {
+				if (enemy.isOhjus && window.ohjusImage && window.ohjusImage.complete) {
+					// Draw animated ohjus
+					ctx.save();
+					ctx.translate(enemy.x, enemy.y);
+					
+					// Simplified: Just draw the frame without rotation
+					const frameY = (enemy.animFrame || 0) * ohjusFrameHeight;
+					
+					ctx.drawImage(
+						window.ohjusImage,
+						0, frameY, 
+						ohjusFrameWidth, ohjusFrameHeight,
+						-enemy.width, -enemy.height,
+						enemy.width * 2, enemy.height * 2
+					);
+					
+					ctx.restore();
+				} else {
+					// Fallback for if the image isn't loaded
+					ctx.fillStyle = '#FF3300';
+					ctx.beginPath();
+					ctx.arc(enemy.x, enemy.y, enemy.width/2, 0, Math.PI * 2);
+					ctx.fill();
+				}
+			} catch (error) {
+				console.error("Error drawing missile:", error);
+				// Very simple fallback
+				ctx.fillStyle = 'red';
+				ctx.fillRect(enemy.x - 10, enemy.y - 10, 20, 20);
+			}
+		}
+        else if (enemy.isCircular) {
+            // Apply rotation for circular enemies
+            ctx.save();
+            ctx.translate(enemy.x, enemy.y);
+            ctx.rotate(enemy.angle);
+            ctx.drawImage(window.circularEnemyImage,           
+                -enemy.width,
+                -enemy.height,
+                enemy.width * 2,
+                enemy.height * 2
+            );
+            ctx.restore();
+        } 
+        else if (enemy.isShooting) {
+            // Apply rotation for shooting enemies
+            ctx.save();
+            ctx.translate(enemy.x, enemy.y);
+            ctx.rotate(enemy.angle);
+            ctx.drawImage(window.shootingEnemyImage,
+                -enemy.width,
+                -enemy.height,
+                enemy.width * 2,
+                enemy.height * 2
+            );
+            ctx.restore();
+        } 
+        else {
+            // Apply rotation for regular enemies
+            ctx.save();
+            ctx.translate(enemy.x, enemy.y);
+            ctx.rotate(enemy.angle);
+            ctx.drawImage(window.enemyImage, 
+                -enemy.width,
+                -enemy.height,
+                enemy.width * 2,
+                enemy.height * 2
+            );
+            ctx.restore();
+        }
+    });
+}
+
+function drawBullets() {
+    ctx.fillStyle = '#4CAF50'; // Always use green (#4CAF50) for player bullets
+    player.bullets.forEach(bullet => {
+        ctx.fillRect(bullet.x - bullet.width/2, bullet.y, bullet.width * 1.5, bullet.height * 1.5);
+    });
+}
+
+function drawEnemyBullets() {
+    ctx.fillStyle = '#FF6B6B';
+    enemyBullets.forEach(bullet => {
+        ctx.fillRect(bullet.x - bullet.width/2, bullet.y, bullet.width, bullet.height);
+    });
+}
+// Replace your current update function with this corrected version:
+function update() {
+	// Access the global mouseX and mouseY variables 
+	// (don't redeclare them locally)
+    // Make sure we don't run the game loop while loading
+    if (isLoading) {
+        requestAnimationFrame(update);
+        return;
+    }
+
+    // If the game is not running, we shouldn't be in this function
+    if (!isGameRunning) {
+        // Clear the canvas with black to ensure no remnants of loading screen
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        return;
+    }
+    
+    // Track game time
+    const now = Date.now();
+    const deltaTime = now - lastTimeCheck;
+    lastTimeCheck = now;
+    gameTime += deltaTime / 1000; // Convert to seconds
+    
+    // Check for boss spawn at 3:30 (210 seconds)
+    if (gameTime >= 210 && !bossSpawned) {
+        // Stop enemy spawning 9 seconds before boss appears
+        regularEnemiesDisabled = true;
+    }
+
+    if (gameTime >= 200 && !bossSpawned) {
+        // Clear all existing enemies
+        enemies.length = 0;
+        enemyBullets.length = 0;
+        circularGroup = null;
+        
+        // Spawn boss
+        spawnBoss();
+    }
+    const powerupMilestones = [500, 1500, 3000, 5000];
+    // Check for powerup milestones but only spawn if no powerup is currently active
+	for (let i = 0; i < powerupMilestones.length; i++) {
+		if (score >= powerupMilestones[i] && !reachedMilestones[i] && !powerup) {
+			// Spawn at a random position at top of screen
+			const randomX = Math.random() * (canvas.width - 60) + 30;
+			spawnPowerup(randomX, -30);
+			reachedMilestones[i] = true;
+			break; // Only spawn one powerup at a time
+		}
+	}
+
+    // Update powerup position and check for collection
+    updatePowerup();
+    
+    // Stop spawning regular enemies at 3:20 (200 seconds)
+    if (gameTime >= 200) {
+        regularEnemiesDisabled = true;
+    }
+    
+    // Clear screen
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Add UI elements - always visible regardless of screen size
+	// UI Background - make it slightly taller for better visibility
+	const statusBarHeight = Math.max(50, Math.min(canvas.height * 0.08, 70));
+	ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'; // Make background more opaque
+	ctx.fillRect(0, 0, canvas.width, statusBarHeight);
+
+	// Score display - positioned to the left
+	ctx.fillStyle = '#4CAF50';
+	const fontSize = Math.max(16, statusBarHeight * 0.4); // Adjust font size
+	ctx.font = `bold ${fontSize}px Arial`;
+	ctx.textAlign = 'left';
+	ctx.fillText(`Score: ${score}`, 20, statusBarHeight * 0.65);
+
+	// HP text and bar - positioned to the right
+	ctx.fillStyle = '#FFFFFF';
+	ctx.font = `bold ${Math.max(14, statusBarHeight * 0.3)}px Arial`;
+	ctx.textAlign = 'right';
+
+	// HP bar - positioned to the right
+	const hpBarWidth = Math.min(canvas.width * 0.25, 120);
+	const hpBarHeight = statusBarHeight * 0.4;
+	const hpPercent = player.hp / player.maxHp;
+
+	// HP Bar background
+	ctx.fillStyle = '#333';
+	ctx.fillRect(canvas.width - hpBarWidth - 15, statusBarHeight * 0.35, hpBarWidth, hpBarHeight);
+
+	// HP Bar fill with color based on percentage
+	ctx.fillStyle = hpPercent > 0.6 ? '#4CAF50' : hpPercent > 0.3 ? '#FFC107' : '#F44336';
+	ctx.fillRect(canvas.width - hpBarWidth - 15, statusBarHeight * 0.35, hpBarWidth * hpPercent, hpBarHeight);
+
+	// Optional: Add border to HP bar for better visibility
+	ctx.strokeStyle = '#FFFFFF';
+	ctx.lineWidth = 1;
+	ctx.strokeRect(canvas.width - hpBarWidth - 15, statusBarHeight * 0.35, hpBarWidth, hpBarHeight);
+
+    // UI separators
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.fillRect(canvas.width / 3, 5, 1, 30);
+    ctx.fillRect(canvas.width * 2 / 3, 5, 1, 30);
+    
+    // Update and draw background
+    updateStars();
+    
+    // Update and draw boss if it exists
+    if (boss) {
+        updateBoss();
+        drawBoss();
+    }
+
+    drawStars();
+    
+	// Player movement and control
+	if (gameStartSequence && !playerReady) {
+		// Smoothly bring player up from bottom of screen
+		player.y -= 2; // Move player up
+		player.x = canvas.width / 2; // Keep centered during intro
+		
+		// Calculate target position - keep player in bottom third of screen
+		const targetY = canvas.height * 0.8; // 80% down the screen
+		
+		// Check if player reached target position
+		if (player.y <= targetY) {
+			player.y = targetY;
+			// Don't end gameStartSequence here - let it end when playerReady becomes true
+		}
+	} else if (playerReady && gameStartSequence) {
+		// End the intro sequence when player becomes ready
+		gameStartSequence = false;
+	} else if (playerReady && !gameStartSequence) {
+		// Only apply controls after intro sequence is complete
+		// Touch/mouse follow controls
+		if (typeof mouseX !== 'undefined' && typeof mouseY !== 'undefined') {
+			// Smoothly interpolate toward touch/mouse position
+			player.x = player.x + (mouseX - player.x) * 0.2;
+			player.y = player.y + (mouseY - player.y) * 0.2;
+		}
+		
+		// Always shoot when player is ready
+		shoot();
+		
+		// Keep player within bounds
+		player.x = Math.max(player.size/2, Math.min(canvas.width - player.size/2, player.x));
+		player.y = Math.max(player.size/2, Math.min(canvas.height - player.size/2, player.y));
+	}
+    // Check invulnerability timer
+    if (playerInvulnerable) {
+        // Only remove invulnerability if player is ready
+        if (playerReady && Date.now() - playerInvulnerableTimer >= 3000) { // 3 seconds after player is ready
+            playerInvulnerable = false;
+        }
+    }
+    
+    // Update game elements
+    updateBullets();
+    updateEnemyBullets();
+    updateEnemies();
+    
+    // Draw game elements
+    drawBullets();
+    drawEnemyBullets();
+    drawPowerup(); // Draw powerup if it exists
+    drawEnemies();
+    
+    // Draw player with animation
+    updatePlayerAnimation();
+    if (window.playerImage.complete) {
+        // Apply visual effect if player is invulnerable
+        if (playerInvulnerable) {
+            // Make player flash by changing opacity based on time
+            ctx.globalAlpha = 0.4 + Math.sin(Date.now() / 100) * 0.4; // Values between 0.0 and 0.8
+        }
+        
+        // Draw player
+        const sourceX = 0;
+        const sourceY = playerAnimFrame * playerFrameHeight;
+        
+        ctx.drawImage(
+            window.playerImage,
+            sourceX, sourceY, playerFrameWidth, playerFrameHeight,
+            player.x - player.size/2, player.y - player.size/2,
+            player.size, player.size
+        );
+        
+        // Reset global alpha
+        if (playerInvulnerable) {
+            ctx.globalAlpha = 1.0;
+        }
+    } else {
+        // Fallback if image isn't loaded
+        if (playerInvulnerable) {
+            ctx.globalAlpha = 0.4 + Math.sin(Date.now() / 100) * 0.4;
+        }
+        ctx.fillStyle = '#4CAF50';
+        ctx.fillRect(player.x - player.size/2, player.y - player.size/2, player.size, player.size);
+        if (playerInvulnerable) {
+            ctx.globalAlpha = 1.0;
+        }
+    }
+	// Draw shield if active - ADD THIS CODE AFTER THE PLAYER DRAWING CODE
+	if (shieldActive) {
+		ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 200) * 0.3; // Pulsing shield effect
+		ctx.fillStyle = '#00BFFF';
+		ctx.beginPath();
+		ctx.arc(player.x, player.y, player.size * 0.65, 0, Math.PI * 2);
+		ctx.fill();
+		
+		// Add shield border
+		ctx.globalAlpha = 0.8;
+		ctx.strokeStyle = '#FFFFFF';
+		ctx.lineWidth = 2;
+		ctx.stroke();
+		
+		// Reset alpha
+		ctx.globalAlpha = 1.0;
+	}
+    
+    // Draw explosions
+    updateAndDrawExplosions();
+    
+    // Update explosion animation
+    if (explosionAnimation) {
+        updateExplosion();
+    }
+	// Force high performance mode on mobile
+	if (isMobile && navigator.scheduling && navigator.scheduling.isInputPending) {
+		navigator.scheduling.isInputPending({includeContinuous: true});
+	}
+
+	gameLoop = requestAnimationFrame(update);
+}
+
+function updatePlayerAnimation() {
+    // Update animation frame based on timer
+    const now = Date.now();
+    if (now - playerAnimTimer > playerFrameDuration) {
+        playerAnimFrame = (playerAnimFrame + 1) % playerFrameCount;
+        playerAnimTimer = now;
+    }
+}
+// Add this function outside of any other function
+// Modify the drawMobileControls function
+function drawMobileControls() {
+    if (!isMobile || !playerReady) return;
+    
+    // Draw joystick base with improved visibility
+    ctx.globalAlpha = 0.5; // Increased from 0.3 for better visibility
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(joystick.baseX, joystick.baseY, joystick.radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Add a visible border
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Draw joystick knob
+    ctx.globalAlpha = 0.7; // Increased from 0.5
+    ctx.fillStyle = '#4CAF50';
+    ctx.beginPath();
+    ctx.arc(joystick.knobX, joystick.knobY, joystick.knobRadius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Draw fire button with improved visibility
+    ctx.globalAlpha = fireButton.pressed ? 0.8 : 0.6; // Increased for better visibility
+    ctx.fillStyle = '#FF4444';
+    ctx.beginPath();
+    ctx.arc(fireButton.x, fireButton.y, fireButton.radius, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Add a visible border for fire button
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Draw fire icon in button
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.moveTo(fireButton.x - 15, fireButton.y);
+    ctx.lineTo(fireButton.x + 15, fireButton.y);
+    ctx.lineTo(fireButton.x, fireButton.y - 20);
+    ctx.closePath();
+    ctx.fill();
+    
+    ctx.globalAlpha = 1.0; // Reset alpha
+}
+
+// Add this function outside of any other function
+function updatePlayerMovement() {
+    if (gameStartSequence && !playerReady) {
+        // Intro animation - same as before
+        player.y = canvas.height + 100;
+        player.x = canvas.width / 2;
+        
+        if (player.y <= canvas.height - 100) {
+            player.y = canvas.height - 100;
+        }
+    } else if (playerReady) {
+        if (isMobile) {
+            // Mobile joystick controls
+            if (joystick.active) {
+                // Calculate direction vector
+                const dx = joystick.knobX - joystick.baseX;
+                const dy = joystick.knobY - joystick.baseY;
+                
+                // Normalize the vector and apply to player position
+                const length = Math.sqrt(dx * dx + dy * dy);
+                if (length > 0) {
+                    const moveSpeed = 3; // Adjust as needed
+                    player.x += (dx / length) * moveSpeed;
+                    player.y += (dy / length) * moveSpeed;
+                }
+            }
+
+        } else {
+            // Desktop keyboard controls
+            const moveSpeed = 0.4;
+            
+            if (keys['ArrowLeft']) player.x -= moveSpeed;
+            if (keys['ArrowRight']) player.x += moveSpeed;
+            if (keys['ArrowUp']) player.y -= moveSpeed;
+            if (keys['ArrowDown']) player.y += moveSpeed;
+            
+        }
+        
+		// Automatic shooting when player is ready
+		if (playerReady) {
+			shoot();
+		}
+		
+        // Keep player within bounds (for both control methods)
+        player.x = Math.max(player.size/2, Math.min(canvas.width - player.size/2, player.x));
+		player.y = Math.max(player.size/2, Math.min(canvas.height - player.size/2, player.y));
+    }
+}
+        // Event listeners
+		canvas.addEventListener('mousemove', (e) => {
+			const rect = canvas.getBoundingClientRect();
+			mouseX = e.clientX - rect.left;
+			mouseY = e.clientY - rect.top;
+		});
+        canvas.addEventListener('mousedown', () => {
+            isMouseDown = true;
+        });
+        canvas.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+        canvas.addEventListener('mouseleave', () => {
+            isMouseDown = false;
+        });
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+		//iOS
+		canvas.addEventListener('gesturestart', function(e) {
+			e.preventDefault();
+		});
+		// Add touch support - simplified version
+		canvas.addEventListener('touchstart', (e) => {
+			e.preventDefault();
+			
+			if (!playerReady) return;
+			
+			const rect = canvas.getBoundingClientRect();
+			const touch = e.touches[0]; // Get the first touch
+			
+			// Set mouseX and mouseY from touch position
+			mouseX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+			mouseY = (touch.clientY - rect.top) * (canvas.height / rect.height);
+		}, { passive: false });
+
+		canvas.addEventListener('touchmove', (e) => {
+			e.preventDefault();
+			
+			if (!playerReady) return;
+			
+			const rect = canvas.getBoundingClientRect();
+			const touch = e.touches[0]; // Get the first touch
+			
+			// Update mouseX and mouseY from touch position
+			mouseX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+			mouseY = (touch.clientY - rect.top) * (canvas.height / rect.height);
+		}, { passive: false });
+
+		// Can remove touchend handler or simplify it
+		canvas.addEventListener('touchend', (e) => {
+			// Optional - can leave empty or remove
+		});
+
+
+		canvas.addEventListener('touchmove', (e) => {
+			e.preventDefault();
+			
+			if (!playerReady) return;
+			
+			const rect = canvas.getBoundingClientRect();
+			
+			for (let i = 0; i < e.touches.length; i++) {
+				const touch = e.touches[i];
+				const touchX = touch.clientX - rect.left;
+				const touchY = touch.clientY - rect.top;
+				
+				// Normalize touchX and touchY to the canvas scale
+				const normalizedX = touchX * (canvas.width / rect.width);
+				const normalizedY = touchY * (canvas.height / rect.height);
+				
+				// Update joystick if it's active (regardless of screen position)
+				if (joystick.active) {
+					const joystickDistance = Math.sqrt(
+						Math.pow(normalizedX - joystick.baseX, 2) + 
+						Math.pow(normalizedY - joystick.baseY, 2)
+					);
+					
+					if (joystickDistance <= joystick.maxDistance) {
+						joystick.knobX = normalizedX;
+						joystick.knobY = normalizedY;
+					} else {
+						// Limit the knob to the maximum distance
+						const angle = Math.atan2(normalizedY - joystick.baseY, normalizedX - joystick.baseX);
+						joystick.knobX = joystick.baseX + Math.cos(angle) * joystick.maxDistance;
+						joystick.knobY = joystick.baseY + Math.sin(angle) * joystick.maxDistance;
+					}
+				}
+			}
+		}, { passive: false });
+
+			// Update touchend handler to better track active touches
+			canvas.addEventListener('touchend', (e) => {
+				// Check remaining touches to see if any are still on our controls
+				const rect = canvas.getBoundingClientRect();
+				let joystickStillActive = false;
+				
+				// Loop through all ACTIVE touches to see if any are still on our controls
+				for (let i = 0; i < e.touches.length; i++) {
+					const touch = e.touches[i];
+					const touchX = touch.clientX - rect.left;
+					const touchY = touch.clientY - rect.top;
+					
+					// Normalize touchX and touchY to the canvas scale
+					const normalizedX = touchX * (canvas.width / rect.width);
+					const normalizedY = touchY * (canvas.height / rect.height);
+					
+					// Check if any touch is near the joystick
+					const joystickDistance = Math.sqrt(
+						Math.pow(normalizedX - joystick.baseX, 2) + 
+						Math.pow(normalizedY - joystick.baseY, 2)
+					);
+					
+					if (joystickDistance <= joystick.radius * 1.5) { // Use a slightly larger area for detection
+						joystickStillActive = true;
+					}
+				}
+				
+				// Reset controls if no touches remain on them
+				if (!joystickStillActive) {
+					joystick.active = false;
+					joystick.knobX = joystick.baseX;
+					joystick.knobY = joystick.baseY;
+				}
+			});
+        // Initial render
+
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+if (document.readyState === "complete" || document.readyState === "interactive") {
+    setTimeout(function() {
+        console.log("Document already loaded, initializing manually");
+        // Initialize images if they don't exist
+        window.enemyImage = window.enemyImage || new Image();
+        window.shootingEnemyImage = window.shootingEnemyImage || new Image();
+        window.circularEnemyImage = window.circularEnemyImage || new Image();
+        window.spinnerEnemyImage = window.spinnerEnemyImage || new Image();
+        window.powerupImage = window.powerupImage || new Image();
+        window.bossImage = window.bossImage || new Image();
+        window.playerImage = window.playerImage || new Image();
+        window.logoImage = window.logoImage || new Image();
+        
+        if (typeof startLoading === "function") {
+            startLoading();
+        } else {
+            console.error("startLoading function not found");
+        }
+    }, 200);
+}
+    </script>
+	<script>
+        // Debug helper - fires when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOM is now loaded - Elements check:");
+            console.log("- Canvas:", document.getElementById('gameCanvas'));
+            console.log("- Start Screen:", document.getElementById('startScreen'));
+            console.log("- Start Button:", document.getElementById('startButton'));
+            console.log("- Game Stats:", document.getElementById('gameStats'));
+            console.log("- Game Over Screen:", document.getElementById('gameOverScreen'));
+			console.log("Restart button canvas found:", !!document.getElementById('restartButtonCanvas'));
+            
+            // Add visible debug info
+			/*
+            setTimeout(function() {
+                if (!isGameRunning) {
+                    // Add emergency start button if game isn't running
+                    var emergencyBtn = document.createElement('button');
+                    emergencyBtn.textContent = "Emergency Start";
+                    emergencyBtn.style = "position:fixed; top:10px; right:10px; z-index:9999; background:red; color:white; padding:10px;";
+                    emergencyBtn.onclick = function() {
+                        startGame();
+                    };
+                    document.body.appendChild(emergencyBtn);
+                    
+                    console.log("Added emergency start button");
+                }
+            }, 5000);
+			*/
+			const socialLinks = document.querySelectorAll('.socialLink');
+    
+			socialLinks.forEach(link => {
+				link.addEventListener('touchstart', function() {
+					this.style.transform = 'scale(1.1)';
+				});
+				
+				link.addEventListener('touchend', function() {
+					this.style.transform = 'scale(1)';
+				});
+			});
+
+        });
+		// Debug visualization function - call this at the end of your update function
+		function drawDebugInfo() {
+			if (!DEBUG_MODE) return;
+			
+			// Show FPS
+			const now = Date.now();
+			if (!window.lastFpsUpdate) window.lastFpsUpdate = now;
+			if (!window.frameCount) window.frameCount = 0;
+			if (!window.currentFps) window.currentFps = 0;
+			
+			window.frameCount++;
+			
+			if (now - window.lastFpsUpdate > 1000) {
+				window.currentFps = window.frameCount;
+				window.frameCount = 0;
+				window.lastFpsUpdate = now;
+			}
+			
+			// Draw debug info
+			ctx.fillStyle = 'white';
+			ctx.font = '12px Arial';
+			ctx.textAlign = 'left';
+			ctx.fillText(`FPS: ${window.currentFps}`, 10, canvas.height - 60);
+			ctx.fillText(`Enemies: ${enemies.length}`, 10, canvas.height - 45);
+			ctx.fillText(`Bullets: ${player.bullets.length + enemyBullets.length}`, 10, canvas.height - 30);
+			ctx.fillText(`Game Time: ${Math.floor(gameTime)}s`, 10, canvas.height - 15);
+		}
+    </script>
+</body>
+</html>
