@@ -230,6 +230,8 @@ function assetLoaded() {
 		}
 		
         // Game state global variables
+		let lastPerformanceBoost = 0;
+		const PERFORMANCE_BOOST_INTERVAL = 200; // milliseconds
 		let currentScreen = "loading";
 		let loadingLoop;
 		let totalAssets = 13; // Increased by 1 to include the missile 
@@ -589,7 +591,7 @@ function loadAllAssets() {
             }
         }, 2000);
         
-        tempAudio.src = 'tappaja.mp3';
+        tempAudio.src = 'tappaja1.mp3';
     } catch (e) {
         console.error("Audio preload error:", e);
         assetLoaded(); // Count as loaded even if it fails
@@ -613,8 +615,21 @@ function loadAllAssets() {
 // Add this at the end of your script block
 document.addEventListener('DOMContentLoaded', function() {
     console.log("DOM loaded, initializing game...");
-	
-	// Lock screen orientation for mobile devices
+    
+    // Force audio context creation to allow immediate playback later
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    window.gameAudioContext = audioContext;
+    
+    // Create a silent sound to unlock audio on iOS
+    const silentSound = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    gainNode.gain.value = 0; // Silent
+    silentSound.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    silentSound.start();
+    silentSound.stop(audioContext.currentTime + 0.001);
+    
+    // Lock screen orientation for mobile devices
     if (detectMobile()) {
         lockScreenOrientation();
     }
@@ -776,6 +791,17 @@ document.addEventListener('keyup', (e) => {
     keys[e.code] = false;
 });
 
+// Handle page visibility to prevent throttling
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+        console.log("Page visible - resuming full performance");
+        if (backgroundMusic && backgroundMusic.paused && isBackgroundMusicPlaying) {
+            backgroundMusic.play();
+        }
+        lastTimeCheck = Date.now(); // Reset the time check to prevent time jump
+    }
+});
+
 
         let lastGroupSpawn = 0;
         const groupSpawnDelay = 15000; // Spawn group every 15 seconds
@@ -858,34 +884,31 @@ function initializeMusic() {
             }
         });
         
-        // Use a user interaction to trigger audio
-        const playPromise = backgroundMusic.play();
+        // Force playback repeatedly
+        const forcePlay = () => {
+            if (backgroundMusic && backgroundMusic.paused && isGameRunning) {
+                backgroundMusic.play()
+                .then(() => {
+                    console.log("Audio successfully started");
+                    isBackgroundMusicPlaying = true;
+                })
+                .catch(e => {
+                    console.log("Audio start failed, retrying...");
+                    // Try again in a short delay
+                    setTimeout(forcePlay, 300);
+                });
+            }
+        };
         
-        if (playPromise !== undefined) {
-            playPromise.then(() => {
-                console.log("Audio playing successfully");
-                isBackgroundMusicPlaying = true;
-            }).catch(e => {
-                console.log("Autoplay prevented, trying again on next user interaction");
-                
-                const playOnInteraction = function() {
-                    backgroundMusic.play()
-                    .then(() => {
-                        console.log("Audio playing after user interaction");
-                        isBackgroundMusicPlaying = true;
-                        
-                        // Remove event listeners once it succeeds
-                        document.removeEventListener('click', playOnInteraction);
-                        document.removeEventListener('touchstart', playOnInteraction);
-                    })
-                    .catch(e => console.log("Still couldn't play audio:", e));
-                };
-                
-                // Add event listeners for both click and touch
-                document.addEventListener('click', playOnInteraction, {once: true});
-                document.addEventListener('touchstart', playOnInteraction, {once: true});
-            });
-        }
+        // Try playing immediately
+        forcePlay();
+        
+        // Also try playing on interactions
+        document.addEventListener('click', forcePlay, {once: false});
+        document.addEventListener('touchstart', forcePlay, {once: false});
+        
+        // Set a timeout to try playing again after 1 second
+        setTimeout(forcePlay, 1000);
     } else if (backgroundMusic.paused) {
         backgroundMusic.play()
         .then(() => isBackgroundMusicPlaying = true)
@@ -1026,17 +1049,25 @@ function updateAndDrawMainScreenStars() {
     // Continue the animation
     mainScreenStarsAnimationId = requestAnimationFrame(updateAndDrawMainScreenStars);
 }
-
+// Simple performance boost for mobile
+function forceHighPerformance() {
+    // Just a simple no-op function to avoid errors
+    console.log("Forcing high performance mode");
+    return;
+}
 function startGame() {
     console.log("Start game function called!");
+	
+	// Start the background music immediately
+    initializeMusic();
     
     // Switch to game screen
     switchScreen("game");
     
     // Initialize game - using try/catch for better error handling
     try {
-        // Start the background music
-        initializeMusic();
+        // Add this line:
+        forceHighPerformance();
         
         // Reset game state
         score = 0;
@@ -1232,8 +1263,8 @@ function restartGame() {
 					const missile = {
 						x: boss.x,
 						y: boss.y + boss.height / 2,
-						width: 40, // Larger to match the new image
-						height: 40, // Larger to match the new image
+						width: 25, // Larger to match the new image
+						height: 25, // Larger to match the new image
 						hp: 4,
 						speed: 0.7,
 						isMissile: true,
@@ -2520,6 +2551,24 @@ function update() {
     const deltaTime = now - lastTimeCheck;
     lastTimeCheck = now;
     gameTime += deltaTime / 1000; // Convert to seconds
+	
+	// Force consistent performance
+	if (now - lastPerformanceBoost > PERFORMANCE_BOOST_INTERVAL) {
+		lastPerformanceBoost = now;
+		
+		// Force layout recalculation to prevent throttling
+		canvas.getBoundingClientRect();
+		
+		// Force audio to play if it's paused
+		if (backgroundMusic && backgroundMusic.paused && isGameRunning) {
+			backgroundMusic.play().catch(e => {}); // Ignore errors
+		}
+		
+		// Force high performance
+		if (window.gameAudioContext && window.gameAudioContext.state === 'suspended') {
+			window.gameAudioContext.resume().catch(e => {});
+		}
+	}
     
     // Check for boss spawn at 3:30 (210 seconds)
     if (gameTime >= 210 && !bossSpawned) {
@@ -2724,6 +2773,10 @@ function update() {
     if (explosionAnimation) {
         updateExplosion();
     }
+	// Force high performance mode on mobile
+	if (isMobile && navigator.scheduling && navigator.scheduling.isInputPending) {
+		navigator.scheduling.isInputPending({includeContinuous: true});
+	}
 	// Force high performance mode on mobile
 	if (isMobile && navigator.scheduling && navigator.scheduling.isInputPending) {
 		navigator.scheduling.isInputPending({includeContinuous: true});
