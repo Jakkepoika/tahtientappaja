@@ -2,22 +2,43 @@
 <html>
 <head>
     <title>Tahtien Tappaja</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
 	<meta http-equiv="ScreenOrientation" content="autoRotate:disabled">
 	<meta name="apple-mobile-web-app-capable" content="yes">
 	<meta name="mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
         body {
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background: black;
-            font-family: Arial, sans-serif;
-            
-        }
+			margin: 0;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			height: 100vh;
+			background: black;
+			font-family: Arial, sans-serif;
+			position: fixed; /* Prevent scrolling */
+			overflow: hidden; /* Prevent scrolling */
+			width: 100%; /* Ensure full width */
+			touch-action: none; /* Disable browser touch actions */
+		}
+		html {
+			overflow: hidden;
+			height: 100%;
+			touch-action: none;
+		}
+
+		html, body {
+			overscroll-behavior: none; /* Prevent pull-to-refresh and other overscroll behaviors */
+			-webkit-overflow-scrolling: none;
+		}
+
+		/* Additional mobile browser fixes */
+		* {
+			-webkit-touch-callout: none; /* Disable callout tooltips */
+			-webkit-user-select: none;   /* Disable text selection */
+			user-select: none;
+		}
+
         #gameCanvas {
             border: 2px solid #333;
 			touch-action: none;
@@ -29,16 +50,135 @@
         }
         .screen {
 			position: fixed;
-			top: 50%;
-			left: 50%;
-			transform: translate(-50%, -50%);
-			background: rgba(16, 22, 78, 0.4); /* Make background semi-transparent */
-			padding: 20px;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			padding: env(safe-area-inset-top, 10px) env(safe-area-inset-right, 10px) env(safe-area-inset-bottom, 10px) env(safe-area-inset-left, 10px);
+			background: rgba(16, 22, 78, 0.4);
 			color: white;
 			text-align: center;
 			z-index: 100;
 			display: none;
+			box-sizing: border-box;
+			/* Add flex layout to position content */
+			display: none;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			/* Better safe area handling */
+			padding-top: max(env(safe-area-inset-top, 10px), 20px);
+			padding-bottom: max(env(safe-area-inset-bottom, 10px), 20px);
+			/* Ensure content fits */
+			min-height: 100vh;
+			min-height: 100dvh; /* Dynamic viewport height for mobile */
 		}
+	
+	/* Add responsive sizing classes */
+	.responsive-container {
+		width: 100%;
+		max-width: 400px;
+		margin: 0 auto;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		align-items: center;
+		gap: clamp(5px, 2vh, 15px); /* Responsive gap */
+		padding: 10px; /* Add some padding */
+		box-sizing: border-box;
+	}
+	
+	.screen img, .screen canvas {
+	    max-width: 100%;
+	    height: auto;
+	    object-fit: contain;
+	}
+	
+	/* Add specific spacing for elements */
+	.logo-img {
+		max-width: 90%;
+		max-height: 15vh; /* Reduced from 20vh */
+		margin-bottom: 5px; /* Reduced margin */
+	}
+
+	.character-anim {
+		max-width: 80%;
+		max-height: 25vh; /* Reduced from 30vh */
+		margin-bottom: 5px; /* Reduced margin */
+	}
+	
+	.button-container {
+	    width: 100%;
+	    max-width: 335px;
+	    margin: 15px auto;
+	}
+	
+	/* Fix positioning for social links */
+	#socialLinks, #socialLinks2 {
+	    width: 100%;
+	    display: flex;
+	    justify-content: center;
+	    gap: 20px;
+	    margin-top: 20px;
+	    margin-bottom: max(env(safe-area-inset-bottom, 10px), 20px);
+	    padding-bottom: 10px;
+	}
+	
+	/* Social link icons */
+	.socialLink {
+	    transition: transform 0.2s;
+	    display: block;
+	}
+	
+	.socialLink:hover, .socialLink:active {
+	    transform: scale(1.1);
+	}
+	
+	.socialLink img {
+	    width: 50px;
+	    height: 50px;
+	    border-radius: 8px;
+	    object-fit: contain;
+	}
+	
+	/* Better support for small screens */
+	@media screen and (max-height: 600px) {
+		.logo-img {
+			max-height: 12vh;
+			margin-bottom: 2px;
+		}
+		.character-anim {
+			max-height: 20vh;
+			margin-bottom: 2px;
+		}
+		.button-container {
+			margin: 5px auto;
+		}
+		.socialLink img {
+			width: 35px;
+			height: 35px;
+		}
+		#socialLinks, #socialLinks2 {
+			gap: 15px;
+			margin-top: 10px;
+		}
+	}
+
+	/* Extra small screens */
+	@media screen and (max-height: 500px) {
+		.logo-img {
+			max-height: 10vh;
+		}
+		.character-anim {
+			max-height: 15vh;
+		}
+		.responsive-container {
+			gap: 5px;
+		}
+		#startButtonCanvas, #restartButtonCanvas {
+			height: 80px !important;
+		}
+	}
 		#logoContainer {
 			display: flex;
 			flex-direction: column;
@@ -78,14 +218,41 @@
             z-index: 200;
         }
 		.socialLink {
-			transition: transform 0.2s;
-			display: block;
+		    transition: transform 0.2s;
+		    display: block;
+		    position: relative; /* Add this */
+		    z-index: 110; /* Add this to ensure icons are visible */
 		}
 		.socialLink:hover {
-			transform: scale(1.1);
+		    transform: scale(1.1);
 		}
 		.socialLink img {
-			border-radius: 8px;
+		    border-radius: 8px;
+		    width: 50px;  /* Ensure consistent width */
+		    height: 50px; /* Ensure consistent height */
+		    object-fit: contain; /* Maintain aspect ratio */
+		}
+		
+		/* Add these new rules for container positioning */
+		#socialLinks, #socialLinks2 {
+		    margin-top: 20px;
+		    display: flex;
+		    justify-content: center;
+		    gap: 20px;
+		    width: 100%;
+		    position: relative;
+		    z-index: 110;
+		}
+		
+		/* Add responsive sizing for very small screens */
+		@media screen and (max-width: 360px) {
+		    .socialLink img {
+		        width: 40px;
+		        height: 40px;
+		    }
+		    #socialLinks, #socialLinks2 {
+		        gap: 15px;
+		    }
 		}
     </style>
 </head>
@@ -98,33 +265,43 @@
 	</div>
 
 	<div id="startScreen" class="screen">
-		<div id="logoContainer">
-			<img src="LOGO.png" alt="Logo" style="max-width: 300px; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto;">
-			<canvas id="characterAnimCanvas" width="250" height="250" style="margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto;"></canvas>
-		</div>
-		<canvas id="startButtonCanvas" width="335" height="125" style="cursor: pointer; max-width: 100%;"></canvas>
-		<div id="socialLinks" style="margin-top: 20px; display: flex; justify-content: center; gap: 20px;">
-			<a href="https://open.spotify.com/track/38Axyw968uHdx7JJxUni6y" target="_blank" class="socialLink">
-				<img src="Spoti.png" alt="Spotify" width="50" height="50">
-			</a>
-			<a href="https://www.instagram.com/jakkepoikanen?igsh=Y2d2YzBvemJqam52" target="_blank" class="socialLink">
-				<img src="ig.png" alt="Instagram" width="50" height="50">
-			</a>
-		</div>
+	    <div class="responsive-container">
+	        <img src="LOGO.png" alt="Logo" class="logo-img">
+	        <canvas id="characterAnimCanvas" width="250" height="250" class="character-anim"></canvas>
+	        
+	        <div class="button-container">
+				<canvas id="startButtonCanvas" width="335" height="125" style="cursor: pointer; max-width: 100%;"></canvas>
+			</div>
+	        
+	        <div id="socialLinks">
+	            <a href="https://open.spotify.com/track/38Axyw968uHdx7JJxUni6y" target="_blank" class="socialLink">
+	                <img src="Spoti.png" alt="Spotify">
+	            </a>
+	            <a href="https://www.instagram.com/jakkepoikanen?igsh=Y2d2YzBvemJqam52" target="_blank" class="socialLink">
+	                <img src="ig.png" alt="Instagram">
+	            </a>
+	        </div>
+	    </div>
 	</div>
 
 	<div id="gameOverScreen" class="screen" style="display:none;">
-		<h2>Game Over</h2>
-		<p>Final Score: <span id="finalScore">0</span></p>
-		<canvas id="restartButtonCanvas" width="335" height="125" style="cursor: pointer; max-width: 100%;"></canvas>
-		<div id="socialLinks2" style="margin-top: 20px; display: flex; justify-content: center; gap: 20px;">
-			<a href="https://open.spotify.com/track/38Axyw968uHdx7JJxUni6y" target="_blank" class="socialLink">
-				<img src="Spoti.png" alt="Spotify" width="50" height="50">
-			</a>
-			<a href="https://www.instagram.com/jakkepoikanen?igsh=Y2d2YzBvemJqam52" target="_blank" class="socialLink">
-				<img src="ig.png" alt="Instagram" width="50" height="50">
-			</a>
-		</div>
+	    <div class="responsive-container">
+	        <h2>Game Over</h2>
+	        <p>Final Score: <span id="finalScore">0</span></p>
+	        
+	        <div class="button-container">
+	            <canvas id="restartButtonCanvas" width="335" height="125" style="cursor: pointer; max-width: 100%;"></canvas>
+	        </div>
+	        
+	        <div id="socialLinks2">
+	            <a href="https://open.spotify.com/track/38Axyw968uHdx7JJxUni6y" target="_blank" class="socialLink">
+	                <img src="Spoti.png" alt="Spotify">
+	            </a>
+	            <a href="https://www.instagram.com/jakkepoikanen?igsh=Y2d2YzBvemJqam52" target="_blank" class="socialLink">
+	                <img src="ig.png" alt="Instagram">
+	            </a>
+	        </div>
+	    </div>
 	</div>
     <script>
 // Screen orientation locking function
@@ -268,7 +445,7 @@ function assetLoaded() {
 		// Debug mode flag - set to true to enable console logs and visual debug info
 		const DEBUG_MODE = true;
 		// Powerup milestone tracking
-		let reachedMilestones = [false, false, false, false];
+		// let reachedMilestones = [false, false, false, false];
 		// Global mouse position tracking
 		let mouseX, mouseY;
 		const NUM_MAIN_SCREEN_STARS = 50;
@@ -284,17 +461,17 @@ function assetLoaded() {
 		let playerAnimTimer = 0;
 		// Start button animation variables
 		let startButtonImage = new Image();
-		let startButtonAnimating = false;
+		// let startButtonAnimating = false;
 		let startButtonFrame = 0;
-		let startButtonFrameCount = 17; // Your animation has 17 frames
+		let startButtonFrameCount = 2; // Your animation has 2 frames
 		let startButtonFrameWidth = 670; // Width of each frame
-		let startButtonFrameHeight = 250; // Height of each frame
-		let startButtonTimer = 0;
-		let startButtonAnimationDuration = 1000; // 1 seconds for the whole animation
+		let startButtonFrameHeight = 248; // Height of each frame
+		// let startButtonTimer = 0;
+		// let startButtonAnimationDuration = 1000; // 1 seconds for the whole animation
 		// Restart button animation variables (uses same image as start button)
-		let restartButtonAnimating = false;
+		// let restartButtonAnimating = false;
 		let restartButtonFrame = 0;
-		let restartButtonTimer = 0;
+		// let restartButtonTimer = 0;
 		const playerFrameCount = 2; // Your animation has 2 frames
 		const playerFrameWidth = 500; // Width of each frame in your vertical sprite sheet
 		const playerFrameHeight = 500; // Height of each frame (1000px ÷ 2 frames = 500px per frame)
@@ -420,30 +597,30 @@ function switchScreen(newScreen) {
         });
     } 
     else if (newScreen === "start") {
-		isLoading = false;
-		isGameRunning = false;
-		
-		// Draw background with stars first
-		ctx.fillStyle = '#10164e';
-		ctx.fillRect(0, 0, canvas.width, canvas.height);
-		
-		// Initialize stars before showing the UI
-		initializeMainScreenStars();
-		mainScreenStarsAnimationId = requestAnimationFrame(updateAndDrawMainScreenStars);
-		
-		// Then show the UI
-		if (startScreen) {
-			startScreen.style.display = 'block';
-		}
-		
-		// Start main character animation
-		mainCharacterAnimFrame = 0;
-		mainCharacterAnimTimer = Date.now();
-		requestAnimationFrame(animateMainCharacter);
-		// Initialize start button
-		startButtonFrame = 0;
-		updateStartButton();
-	} 
+	    isLoading = false;
+	    isGameRunning = false;
+	    
+	    // Draw background with stars first
+	    ctx.fillStyle = '#10164e';
+	    ctx.fillRect(0, 0, canvas.width, canvas.height);
+	    
+	    // Initialize stars before showing the UI
+	    initializeMainScreenStars();
+	    mainScreenStarsAnimationId = requestAnimationFrame(updateAndDrawMainScreenStars);
+	    
+	    // Then show the UI
+	    if (startScreen) {
+	        startScreen.style.display = 'flex'; // Changed from 'block' to 'flex'
+	    }
+	    
+	    // Start main character animation
+	    mainCharacterAnimFrame = 0;
+	    mainCharacterAnimTimer = Date.now();
+	    requestAnimationFrame(animateMainCharacter);
+	    // Initialize start button
+	    startButtonFrame = 0;
+	    updateStartButton();
+	}
     else if (newScreen === "game") {
         isLoading = false;
         isGameRunning = true;
@@ -453,15 +630,15 @@ function switchScreen(newScreen) {
         }
     } 
     else if (newScreen === "gameOver") {
-		isLoading = false;
-		isGameRunning = false;
-		
-		if (gameOverScreen) {
-			gameOverScreen.style.display = 'block';
-			// Initialize restart button
-			restartButtonFrame = 0;
-			updateRestartButton();
-		}
+	    isLoading = false;
+	    isGameRunning = false;
+	    
+	    if (gameOverScreen) {
+	        gameOverScreen.style.display = 'flex'; // Changed from 'block' to 'flex'
+	        // Initialize restart button
+	        restartButtonFrame = 0;
+	        updateRestartButton();
+	    }
 	}
     
     currentScreen = newScreen;
@@ -529,10 +706,10 @@ function loadAllAssets() {
 	console.log("Image objects initialized for loading");
 	
     // Load all images
-	loadImage(window.startButtonImage, 'start.png');
+	loadImage(window.startButtonImage, 'startbtn.png');
 	loadImage(window.explosionImage, 'explo.png');
 	// Add a special error handling for the start button
-	// After loadImage(window.startButtonImage, 'start.png');
+	// After loadImage(window.startButtonImage, 'startntn.png');
 	window.startButtonImage.addEventListener('load', function() {
 		console.log("Start button image loaded successfully:", this.width, "x", this.height);
 		// Force start button update once loaded
@@ -547,14 +724,14 @@ function loadAllAssets() {
 		tempCanvas.height = 4250;
 		const tempCtx = tempCanvas.getContext('2d');
 		
-		// Create a simple green button as fallback
-		for (let i = 0; i < 17; i++) {
+		// Create a simple green button as fallback (2 frames)
+		for (let i = 0; i < 2; i++) {
 			tempCtx.fillStyle = i === 0 ? '#4CAF50' : '#2E7D32';
-			tempCtx.fillRect(0, i * 250, 670, 250);
+			tempCtx.fillRect(0, i * 248, 670, 248);
 			tempCtx.fillStyle = 'white';
 			tempCtx.font = '40px Arial';
 			tempCtx.textAlign = 'center';
-			tempCtx.fillText('START GAME', 335, i * 250 + 125);
+			tempCtx.fillText('START GAME', 335, i * 248 + 124);
 		}
 		
 		// Set the canvas as the source for the image
@@ -633,7 +810,34 @@ document.addEventListener('DOMContentLoaded', function() {
     if (detectMobile()) {
         lockScreenOrientation();
     }
-    
+	
+	// Prevent page scrolling on mobile - more comprehensive approach
+	document.addEventListener('touchmove', function(e) {
+		e.preventDefault();
+	}, { passive: false });
+
+	document.addEventListener('touchstart', function(e) {
+		e.preventDefault();
+	}, { passive: false });
+
+	document.addEventListener('touchend', function(e) {
+		e.preventDefault();
+	}, { passive: false });
+
+	document.addEventListener('touchcancel', function(e) {
+		e.preventDefault();
+	}, { passive: false });
+
+	// Prevent scrolling on the body element
+	document.body.addEventListener('touchmove', function(e) {
+		e.preventDefault();
+	}, { passive: false });
+
+	// Prevent context menu on long press
+	document.addEventListener('contextmenu', function(e) {
+		e.preventDefault();
+	});
+		
     // Initialize image objects
     window.enemyImage = new Image();
     window.shootingEnemyImage = new Image();
@@ -663,51 +867,45 @@ document.addEventListener('DOMContentLoaded', function() {
 	if (startButtonCanvas) {
 		// Mouse events for desktop
 		startButtonCanvas.addEventListener('mousedown', function() {
-			startButtonAnimating = true;
-			startButtonTimer = Date.now();
-			requestAnimationFrame(updateStartButton);
+			startButtonFrame = 1; // Show pressed frame
+			updateStartButton();
 		});
-		
+
 		startButtonCanvas.addEventListener('mouseup', function() {
-			if (startButtonAnimating) {
-				startButtonAnimating = false;
-				startButtonFrame = 0; // Reset to frame 0 when released early
-				updateStartButton(); // Update to show the reset frame
-			}
+			startButtonFrame = 0; // Show unpressed frame
+			updateStartButton();
+			// Start game after short delay
+			setTimeout(() => {
+				startGame();
+			}, 500);
 		});
-		
+
 		startButtonCanvas.addEventListener('mouseleave', function() {
-			if (startButtonAnimating) {
-				startButtonAnimating = false;
-				startButtonFrame = 0; // Reset frame when mouse leaves
-				updateStartButton();
-			}
+			startButtonFrame = 0; // Reset to unpressed frame if mouse leaves
+			updateStartButton();
 		});
-		
+
 		// Touch events for mobile
 		startButtonCanvas.addEventListener('touchstart', function(e) {
 			e.preventDefault();
-			startButtonAnimating = true;
-			startButtonTimer = Date.now();
-			requestAnimationFrame(updateStartButton);
+			startButtonFrame = 1; // Show pressed frame
+			updateStartButton();
 		});
-		
+
 		startButtonCanvas.addEventListener('touchend', function(e) {
 			e.preventDefault();
-			if (startButtonAnimating) {
-				startButtonAnimating = false;
-				startButtonFrame = 0; // Reset to frame 0 
-				updateStartButton();
-			}
+			startButtonFrame = 0; // Show unpressed frame
+			updateStartButton();
+			// Start game after short delay
+			setTimeout(() => {
+				startGame();
+			}, 500);
 		});
-		
+
 		startButtonCanvas.addEventListener('touchcancel', function(e) {
 			e.preventDefault();
-			if (startButtonAnimating) {
-				startButtonAnimating = false;
-				startButtonFrame = 0;
-				updateStartButton();
-			}
+			startButtonFrame = 0; // Reset to unpressed frame
+			updateStartButton();
 		});
 		
 		console.log("Start button canvas listeners added");
@@ -720,51 +918,45 @@ document.addEventListener('DOMContentLoaded', function() {
 	if (restartButtonCanvas) {
 		// Mouse events for desktop
 		restartButtonCanvas.addEventListener('mousedown', function() {
-			restartButtonAnimating = true;
-			restartButtonTimer = Date.now();
-			requestAnimationFrame(updateRestartButton);
+			restartButtonFrame = 1; // Show pressed frame
+			updateRestartButton();
 		});
-		
+
 		restartButtonCanvas.addEventListener('mouseup', function() {
-			if (restartButtonAnimating) {
-				restartButtonAnimating = false;
-				restartButtonFrame = 0; // Reset to frame 0 when released early
-				updateRestartButton(); // Update to show the reset frame
-			}
+			restartButtonFrame = 0; // Show unpressed frame
+			updateRestartButton();
+			// Restart game after short delay
+			setTimeout(() => {
+				restartGame();
+			}, 500);
 		});
-		
+
 		restartButtonCanvas.addEventListener('mouseleave', function() {
-			if (restartButtonAnimating) {
-				restartButtonAnimating = false;
-				restartButtonFrame = 0; // Reset frame when mouse leaves
-				updateRestartButton();
-			}
+			restartButtonFrame = 0; // Reset to unpressed frame if mouse leaves
+			updateRestartButton();
 		});
-		
+
 		// Touch events for mobile
 		restartButtonCanvas.addEventListener('touchstart', function(e) {
 			e.preventDefault();
-			restartButtonAnimating = true;
-			restartButtonTimer = Date.now();
-			requestAnimationFrame(updateRestartButton);
+			restartButtonFrame = 1; // Show pressed frame
+			updateRestartButton();
 		});
-		
+
 		restartButtonCanvas.addEventListener('touchend', function(e) {
 			e.preventDefault();
-			if (restartButtonAnimating) {
-				restartButtonAnimating = false;
-				restartButtonFrame = 0; // Reset to frame 0 
-				updateRestartButton();
-			}
+			restartButtonFrame = 0; // Show unpressed frame
+			updateRestartButton();
+			// Restart game after short delay
+			setTimeout(() => {
+				restartGame();
+			}, 500);
 		});
-		
+
 		restartButtonCanvas.addEventListener('touchcancel', function(e) {
 			e.preventDefault();
-			if (restartButtonAnimating) {
-				restartButtonAnimating = false;
-				restartButtonFrame = 0;
-				updateRestartButton();
-			}
+			restartButtonFrame = 0; // Reset to unpressed frame
+			updateRestartButton();
 		});
 		
 		console.log("Restart button canvas listeners added");
@@ -778,6 +970,35 @@ document.addEventListener('DOMContentLoaded', function() {
     // Start the loading process
     setTimeout(startLoading, 100);
 });
+// Handle safe areas for different mobile browsers
+function updateSafeAreas() {
+    // Get all screen elements
+    const screens = document.querySelectorAll('.screen');
+    
+    // Check if running on iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    
+    // Apply extra padding for iOS notch/dynamic island and bottom bar
+    if (isIOS) {
+        screens.forEach(screen => {
+            screen.style.paddingTop = 'max(env(safe-area-inset-top), 40px)';
+            screen.style.paddingBottom = 'max(env(safe-area-inset-bottom), 40px)';
+        });
+    }
+    
+    // Extra handling for bottom nav bars in browsers like Chrome
+    const viewportHeight = window.innerHeight;
+    if (viewportHeight < 600) {
+        // For very small screens, reduce element sizes
+        document.documentElement.style.setProperty('--scale-factor', '0.85');
+    } else {
+        document.documentElement.style.setProperty('--scale-factor', '1');
+    }
+}
+
+// Call this function on load and resize
+window.addEventListener('resize', updateSafeAreas);
+document.addEventListener('DOMContentLoaded', updateSafeAreas);
 document.addEventListener('keydown', (e) => {
     keys[e.code] = true;
     
@@ -807,13 +1028,14 @@ document.addEventListener('visibilitychange', function() {
         const groupSpawnDelay = 15000; // Spawn group every 15 seconds
         // Player
         const player = {
-            x: canvas.width / 2,
-            y: canvas.height - 80,
-            size: 95,
-            hp: 100,
-            maxHp: 100,
-            bullets: []
-        };
+	    x: canvas.width / 2,
+	    y: canvas.height - 80,
+	    size: 95,
+	    hp: 100,
+	    maxHp: 100,
+	    bullets: [],
+	    hitboxRatio: 0.6 // Hitbox is 60% of sprite size
+	};
         // Game objects
         const enemies = [];
         const enemyBullets = [];
@@ -841,7 +1063,7 @@ function showLoadingScreen() {
     ctx.fillStyle = 'white';
     ctx.font = '24px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText('TESTI7', canvas.width / 2, canvas.height / 2 - 50);
+    ctx.fillText('LOADING...', canvas.width / 2, canvas.height / 2 - 50);
     
     // Draw loading bar background
     ctx.fillStyle = '#333';
@@ -877,12 +1099,12 @@ function initializeMusic() {
         backgroundMusic.preload = 'auto'; // Ensure full preload
         
         // Set up seamless looping by detecting near-end
-        backgroundMusic.addEventListener('timeupdate', function() {
-            // If we're within 0.1 seconds of the end, restart
-            if (this.duration - this.currentTime < 0.1) {
-                this.currentTime = 0;
-            }
-        });
+		backgroundMusic.addEventListener('timeupdate', function() {
+			// If we're within 1 second of the end, restart earlier for seamless loop
+			if (this.duration - this.currentTime < 10.0) {
+				this.currentTime = 0;
+			}
+		});
         
         // Force playback repeatedly
         const forcePlay = () => {
@@ -1181,10 +1403,10 @@ function restartGame() {
 	shieldHealth = 0;
 	powerup = null;
 	powerupSpawned = false;
-	// Reset milestone tracking properly
-	for (let i = 0; i < reachedMilestones.length; i++) {
-		reachedMilestones[i] = false;
-	}
+	// // Reset milestone tracking properly
+	//for (let i = 0; i < reachedMilestones.length; i++) {
+	//	reachedMilestones[i] = false;
+	//}
 
     // Remove any existing powerup indicator
     const indicator = document.getElementById('powerupIndicator');
@@ -1212,30 +1434,59 @@ function restartGame() {
 		// Add this function to spawn the boss
 		function spawnBoss() {
 			bossSpawned = true;
-			regularEnemiesDisabled = true;
+			// regularEnemiesDisabled is now set earlier, we don't need to set it here
 			lastBossMissile = Date.now();
 			bossAnimationFrame = 0;  // Reset animation frame
 			bossAnimationTimer = Date.now();  // Reset animation timer
+			
+			// Optional: Play a warning sound or add an on-screen warning
+			// You could add a visual "Warning: Boss Approaching" message here
+			
 			boss = {
 				x: canvas.width / 2,
-				y: 100,
-				width: 75,
-				height: 75,
-				hp: 220,
-				maxHp: 200,
+				y: -150, // Start higher off-screen for more dramatic entrance
+				width: 90,
+				height: 90,
+				hp: 450,
+				maxHp: 450,
 				lastShot: 0,
 				shootingDelay: 1000, // 1 second
 				moveDirection: 1,    // 1 for right, -1 for left
 				moveSpeed: 1.5,
-				movePattern: 0,      // 0 for horizontal, 1 for diagonal
+				movePattern: 0,      // Now 0: horizontal, 1: diagonal, 2: charge at player, 3: X-laser
 				patternTimer: 0,     // For switching patterns
-				patternDuration: 5000 // Switch pattern every 5 seconds
+				patternDuration: 5000, // Switch pattern every 5 seconds
+				entrySequence: true, // Flag for entry animation
+				targetY: 100, // Target position for entry animation
+				entrySpeed: 0.5, // Slower entry speed
+				invulnerable: true, // Make boss invulnerable during entry
+				flashEffect: 0, // For visual invulnerability effect
+				
+				// New laser pattern properties
+				laserActive: false,
+				laserAngle: 0,
+				laserRotationSpeed: 0.015, // Radians per frame (faster rotation)
+				laserRotationDirection: 1, // 1 for clockwise, -1 for counterclockwise
+				laserWidth: 5,
+				laserLength: 1000, // Long enough to reach screen edges
+				laserDamage: 1, // Damage per frame while in contact with laser
+				laserCooldown: false,
+				laserCooldownTimer: 0,
+				laserCooldownDuration: 1500, // 1.5 seconds cooldown
+				laserStartupPhase: false,
+				laserStartupTimer: 0,
+				laserStartupDuration: 2000, // 2 seconds to prepare laser
+				laserRotations: 0, // Track how many degrees we've rotated
+				laserRotationLimit: Math.PI * 4 // Two full 360-degree rotations (720 degrees total)
 			};
 		}
 
 		// Add this function to handle boss shooting
 		function bossShooting() {
 			if (!boss) return;
+			
+			// Don't shoot during entry sequence
+			if (boss.entrySequence) return;
 			
 			const now = Date.now();
 			
@@ -1265,8 +1516,8 @@ function restartGame() {
 						y: boss.y + boss.height / 2,
 						width: 25, // Larger to match the new image
 						height: 25, // Larger to match the new image
-						hp: 4,
-						speed: 0.7,
+						hp: 5,
+						speed: 1.3,
 						isMissile: true,
 						points: 20,
 						// Animation properties
@@ -1299,14 +1550,151 @@ function restartGame() {
 			
 			const now = Date.now();
 			
-			// Check if it's time to switch patterns
-			if (now - boss.patternTimer >= boss.patternDuration) {
-				boss.movePattern = (boss.movePattern + 1) % 3; // Toggle between 3 patterns
-				boss.patternTimer = now;
+			// Handle entry sequence first
+			if (boss.entrySequence) {
+				// Move boss down smoothly at slower speed
+				boss.y += boss.entrySpeed;
+				
+				// Keep boss centered during entry
+				boss.x = canvas.width / 2;
+				
+				// Update flash effect for invulnerability visualization
+				boss.flashEffect = (boss.flashEffect + 0.1) % (Math.PI * 2);
+				
+				// Check if boss reached target position
+				if (boss.y >= boss.targetY) {
+					boss.y = boss.targetY;
+					boss.entrySequence = false; // End entry sequence
+					boss.patternTimer = now; // Start pattern timer now
+					
+					// Keep invulnerable for 2 more seconds after reaching position
+					setTimeout(() => {
+						if (boss) {
+							boss.invulnerable = false;
+						}
+					}, 2000);
+				}
+				
+				// Don't do normal movement or shooting during entry
+				return;
 			}
 			
-			// Pattern 0: Horizontal movement
+			
+			// Normal boss behavior after entry sequence
+			// Check if it's time to switch patterns
+			if (!boss.laserActive && !boss.laserCooldown && !boss.laserStartupPhase && 
+				now - boss.patternTimer >= boss.patternDuration) {
+				// Randomly choose next pattern (60% chance for laser pattern)
+				if (Math.random() < 0.60) {
+					boss.movePattern = 3; // X-laser pattern
+					boss.laserStartupPhase = true;
+					boss.laserStartupTimer = now;
+					boss.laserRotations = 0;
+					boss.laserAngle = 0;
+					// Randomly choose rotation direction: 50% chance for each direction
+					boss.laserRotationDirection = Math.random() < 0.5 ? 1 : -1;
+				} else {
+					// Choose one of the original patterns
+					boss.movePattern = Math.floor(Math.random() * 3); // 0, 1, or 2
+				}
+				boss.patternTimer = now;
+			}
+
+			// Handle laser cooldown
+			if (boss.laserCooldown) {
+				if (now - boss.laserCooldownTimer >= boss.laserCooldownDuration) {
+					boss.laserCooldown = false;
+					boss.movePattern = Math.floor(Math.random() * 3); // Go back to regular patterns
+					boss.patternTimer = now; // Reset pattern timer
+				}
+				// During cooldown, just stay in place
+				return;
+			}
+
+			// Handle laser startup phase
+			if (boss.laserStartupPhase) {
+				// Add pulsing red effect to entire screen as warning
+				const progress = (now - boss.laserStartupTimer) / boss.laserStartupDuration;
+				const pulse = Math.sin(now / 100) * 0.05;
+				
+				// Red flash warning - getting stronger as startup progresses
+				ctx.fillStyle = `rgba(255, 0, 0, ${pulse * progress})`;
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				
+				// Add sound effect if progress is at certain thresholds
+				if (progress > 0.25 && progress < 0.26 || 
+					progress > 0.5 && progress < 0.51 ||
+					progress > 0.75 && progress < 0.76) {
+					// If you have a warning sound effect, play it here
+					createExplosion(boss.x, boss.y, 0.5);
+				}
+				// Move to middle of the screen
+				const targetX = canvas.width / 2;
+				const targetY = canvas.height / 4; // 1/4 down from the top
+				
+				// Move towards target position
+				const dx = targetX - boss.x;
+				const dy = targetY - boss.y;
+				
+				boss.x += dx * 0.05; // Move 5% of the distance each frame
+				boss.y += dy * 0.05;
+				
+				// Check if startup phase is complete
+				if (now - boss.laserStartupTimer >= boss.laserStartupDuration &&
+					Math.abs(dx) < 5 && Math.abs(dy) < 5) { // Close enough to target
+					boss.laserStartupPhase = false;
+					boss.laserActive = true;
+					boss.x = targetX; // Snap to exact position
+					boss.y = targetY;
+					
+					// Create charging effect
+					for (let i = 0; i < 8; i++) {
+						createExplosion(
+							boss.x + Math.cos(i * Math.PI/4) * boss.width/2,
+							boss.y + Math.sin(i * Math.PI/4) * boss.width/2,
+							0.3
+						);
+					}
+				}
+				return;
+			}
+
+			// Handle active laser pattern
+			if (boss.laserActive) {
+				// Calculate how long the laser has been active
+				const laserActiveTime = now - (boss.laserStartupTimer + boss.laserStartupDuration);
+				const accelerationDuration = 1000; // 1 second to reach full speed
+				
+				// Calculate rotation speed with acceleration
+				let currentRotationSpeed;
+				if (laserActiveTime < accelerationDuration) {
+					// Slow start for first second (start at 30% speed, ramp up to full)
+					const progress = laserActiveTime / accelerationDuration;
+					currentRotationSpeed = boss.laserRotationSpeed * (0.3 + 0.7 * progress);
+				} else {
+					// Full speed after 1 second
+					currentRotationSpeed = boss.laserRotationSpeed;
+				}
+				
+				// Increase angle for rotation with direction and acceleration
+				boss.laserAngle += currentRotationSpeed * boss.laserRotationDirection;
+				boss.laserRotations += currentRotationSpeed; // Always positive for tracking total rotation
+				
+				// Check if we've completed two full rotations
+				if (boss.laserRotations >= boss.laserRotationLimit) {
+					boss.laserActive = false;
+					boss.laserCooldown = true;
+					boss.laserCooldownTimer = now;
+					return;
+				}
+				
+				// Don't do regular movement or shooting during laser pattern
+				return;
+			}
+
+			// Original patterns code here (patterns 0, 1, 2)
 			if (boss.movePattern === 0) {
+				// Horizontal movement
 				boss.x += boss.moveSpeed * boss.moveDirection;
 				
 				// Bounce at edges
@@ -1314,8 +1702,8 @@ function restartGame() {
 					boss.moveDirection *= -1;
 				}
 			}
-			// Pattern 1: Diagonal movement
 			else if (boss.movePattern === 1) {
+				// Diagonal movement
 				boss.x += boss.moveSpeed * boss.moveDirection;
 				boss.y += Math.sin(now / 500) * 2; // Wavy up-down movement
 				
@@ -1327,30 +1715,41 @@ function restartGame() {
 				// Keep within vertical bounds
 				boss.y = Math.max(50, Math.min(canvas.height / 3, boss.y));
 			}
-			// Pattern 2: "Charge" at player
 			else if (boss.movePattern === 2) {
-				const targetX = player.x;
-				const dx = targetX - boss.x;
-				boss.x += (dx * 0.02); // Move 2% of the way to player each frame
+				// Charge at player pattern
+				const dx = player.x - boss.x;
+				const dy = player.y - boss.y;
+				const distance = Math.sqrt(dx * dx + dy * dy);
 				
-				// Slow up/down movement during this pattern
-				boss.y = 80 + Math.sin(now / 1000) * 30;
+				if (distance > 0) {
+					boss.x += (dx / distance) * boss.moveSpeed * 0.5; // Slower charge
+					boss.y += (dy / distance) * boss.moveSpeed * 0.5;
+				}
+				
+				// Keep boss on screen
+				boss.x = Math.max(boss.width/2, Math.min(canvas.width - boss.width/2, boss.x));
+				boss.y = Math.max(50, Math.min(canvas.height / 2, boss.y));
 			}
 			
-			// Boss shooting
-			bossShooting();
+			// Boss shooting - only if not in laser mode
+			if (boss.movePattern !== 3) {
+				bossShooting();
+			}
 			
-			// Check for player collision with boss
+			// Calculate actual hitbox size for player
+			const playerHitboxSize = player.size * player.hitboxRatio;
+			
+			// Check for player collision with boss using adjusted hitbox
 			if (checkCollision({
 				x: boss.x - boss.width/2,
 				y: boss.y - boss.height/2,
 				width: boss.width,
 				height: boss.height
 			}, {
-				x: player.x - player.size/2,
-				y: player.y - player.size/2,
-				width: player.size,
-				height: player.size
+				x: player.x - playerHitboxSize/2,
+				y: player.y - playerHitboxSize/2,
+				width: playerHitboxSize,
+				height: playerHitboxSize
 			})) {
 				player.hp -= 20;
 				if (player.hp <= 0) {
@@ -1368,6 +1767,51 @@ function restartGame() {
 			if (now - bossAnimationTimer > bossFrameDuration) {
 				bossAnimationFrame = (bossAnimationFrame + 1) % bossFrameCount;
 				bossAnimationTimer = now;
+			}
+			
+			// Add visual effects for entry and invulnerability
+			if (boss.invulnerable) {
+				// Save context for effects
+				ctx.save();
+				
+				// Pulsing transparency effect for invulnerability
+				ctx.globalAlpha = 0.6 + Math.sin(boss.flashEffect) * 0.3;
+				
+				// Optional: Add a glow effect for invulnerability
+				ctx.shadowColor = "rgba(255, 255, 150, 0.8)";
+				ctx.shadowBlur = 15 + Math.sin(boss.flashEffect * 2) * 5;
+			}
+			
+			// Add charging effect during laser startup
+			if (boss.laserStartupPhase) {
+				// Pulsing red glow
+				ctx.save();
+				const progress = (Date.now() - boss.laserStartupTimer) / boss.laserStartupDuration;
+				const pulseSize = 20 + Math.sin(Date.now() / 100) * 10;
+				
+				ctx.beginPath();
+				ctx.arc(boss.x, boss.y, boss.width/2 + pulseSize * progress, 0, Math.PI * 2);
+				ctx.fillStyle = `rgba(255, 0, 0, ${0.1 + 0.2 * progress})`;
+				ctx.fill();
+				
+				// Add warning lines
+				if (progress > 0.7) {
+					ctx.lineWidth = 2;
+					ctx.strokeStyle = 'rgba(255, 0, 0, 0.7)';
+					
+					for (let i = 0; i < 4; i++) {
+						const angle = (i * Math.PI/2);
+						const endX = boss.x + Math.cos(angle) * (boss.width + 50);
+						const endY = boss.y + Math.sin(angle) * (boss.width + 50);
+						
+						ctx.beginPath();
+						ctx.moveTo(boss.x, boss.y);
+						ctx.lineTo(endX, endY);
+						ctx.stroke();
+					}
+				}
+				
+				ctx.restore();
 			}
 			
 			// Draw boss with animation
@@ -1403,6 +1847,16 @@ function restartGame() {
 				ctx.stroke();
 			}
 			
+			// Draw laser beams if active
+			if (boss.laserActive) {
+				drawBossLaser();
+			}
+			
+			// Restore context if invulnerable effects were applied
+			if (boss.invulnerable) {
+				ctx.restore();
+			}
+			
 			// Draw boss HP bar
 			const hpBarWidth = boss.width * 1.5;
 			const hpBarHeight = 8;
@@ -1415,6 +1869,98 @@ function restartGame() {
 			// HP Bar fill
 			ctx.fillStyle = `rgb(${255 * (1 - hpPercentage)}, ${255 * hpPercentage}, 0)`;
 			ctx.fillRect(boss.x - hpBarWidth/2, boss.y - boss.height/2 - 15, hpBarWidth * hpPercentage, hpBarHeight);
+		}
+		function drawBossLaser() {
+			if (!boss || !boss.laserActive) return;
+			
+			// Save context
+			ctx.save();
+			
+			// Set laser style
+			ctx.lineWidth = boss.laserWidth;
+			ctx.strokeStyle = 'rgba(255, 0, 0, 0.7)'; // Red laser
+			ctx.shadowColor = 'rgba(255, 50, 50, 0.9)';
+			ctx.shadowBlur = 15;
+			
+			// Calculate center point for rotation
+			const centerX = boss.x;
+			const centerY = boss.y;
+			
+			// Draw four lines in X pattern
+			for (let i = 0; i < 4; i++) {
+				const angle = boss.laserAngle + (i * Math.PI/2); // 4 lines at 90-degree intervals
+				
+				// Calculate end points
+				const endX = centerX + Math.cos(angle) * boss.laserLength;
+				const endY = centerY + Math.sin(angle) * boss.laserLength;
+				
+				// Draw laser beam
+				ctx.beginPath();
+				ctx.moveTo(centerX, centerY);
+				ctx.lineTo(endX, endY);
+				ctx.stroke();
+				
+				// Add a glow effect
+				ctx.lineWidth = boss.laserWidth * 2;
+				ctx.strokeStyle = 'rgba(255, 0, 0, 0.2)';
+				ctx.beginPath();
+				ctx.moveTo(centerX, centerY);
+				ctx.lineTo(endX, endY);
+				ctx.stroke();
+			}
+			
+			// Restore context
+			ctx.restore();
+		}
+		
+		function checkLaserCollision() {
+			if (!boss || !boss.laserActive || playerInvulnerable) return false;
+			
+			// Calculate actual hitbox size for player
+			const playerHitboxSize = player.size * player.hitboxRatio;
+			const playerX = player.x;
+			const playerY = player.y;
+			const playerRadius = playerHitboxSize / 2;
+			
+			// Check collision with each of the 4 laser beams
+			for (let i = 0; i < 4; i++) {
+				const angle = boss.laserAngle + (i * Math.PI/2);
+				
+				// Parametric line equation for the laser
+				const laserStartX = boss.x;
+				const laserStartY = boss.y;
+				const laserDirX = Math.cos(angle);
+				const laserDirY = Math.sin(angle);
+				
+				// Calculate closest point on line to player center
+				const t = ((playerX - laserStartX) * laserDirX + (playerY - laserStartY) * laserDirY) /
+						 (laserDirX * laserDirX + laserDirY * laserDirY);
+				
+				// Find the closest point on the line
+				const closestX = laserStartX + t * laserDirX;
+				const closestY = laserStartY + t * laserDirY;
+				
+				// Check if closest point is within laser length
+				const distanceToLaserStart = Math.sqrt(
+					(closestX - laserStartX) * (closestX - laserStartX) +
+					(closestY - laserStartY) * (closestY - laserStartY)
+				);
+				
+				if (distanceToLaserStart <= boss.laserLength) {
+					// Check if player is close enough to the laser line
+					const distanceToPlayer = Math.sqrt(
+						(closestX - playerX) * (closestX - playerX) +
+						(closestY - playerY) * (closestY - playerY)
+					);
+					
+					// If distance less than player radius + laser width/2, we have a hit
+					if (distanceToPlayer <= playerRadius + boss.laserWidth/2) {
+						return true;
+					}
+				}
+			}
+			
+			return false;
 		}
 // Add this function to animate the main character on the start screen
 function animateMainCharacter() {
@@ -1453,12 +1999,12 @@ function animateMainCharacter() {
     updateStartButton();
 }
 function updateStartButton() {
-	// Ensure start button image exists
-	if (!window.startButtonImage) {
-		window.startButtonImage = new Image();
-		window.startButtonImage.src = 'start.png';
-		console.log("Created missing start button image");
-	}
+    // Ensure start button image exists
+    if (!window.startButtonImage) {
+        window.startButtonImage = new Image();
+        window.startButtonImage.src = 'startbtn.png';
+        console.log("Created missing start button image");
+    }
     if (!window.startButtonImage || !window.startButtonImage.complete) {
         console.log("Start button image not ready yet");
         // Try again in a moment
@@ -1476,12 +2022,12 @@ function updateStartButton() {
     const buttonCtx = buttonCanvas.getContext('2d');
     buttonCtx.clearRect(0, 0, buttonCanvas.width, buttonCanvas.height);
     
-    // Calculate frame position in the sprite sheet
+    // Calculate frame position in the sprite sheet (2 frames vertically)
     const frameWidth = 670;
-    const frameHeight = 250;
+    const frameHeight = 248;
     
     try {
-        // Draw the current frame
+        // Draw the current frame (0 = up, 1 = down)
         buttonCtx.drawImage(
             window.startButtonImage,
             0, startButtonFrame * frameHeight, 
@@ -1490,32 +2036,6 @@ function updateStartButton() {
             buttonCanvas.width, buttonCanvas.height
         );
         
-        // If we're animating, update the frame
-        if (startButtonAnimating) {
-            const elapsed = Date.now() - startButtonTimer;
-            const progress = Math.min(elapsed / startButtonAnimationDuration, 1);
-            
-            // Map progress (0-1) to frames (1-16)
-            // Calculate which frame to show (frames 1-16 represent progress)
-            const targetFrame = Math.min(Math.floor(progress * 15) + 1, 16);
-            
-            // Update frame if it changed
-            if (targetFrame !== startButtonFrame) {
-                startButtonFrame = targetFrame;
-                console.log("Button animation frame:", startButtonFrame);
-            }
-            
-            // If animation completed, start the game
-            if (progress >= 1) {
-                console.log("Button animation complete, starting game");
-                startButtonAnimating = false;
-                startGame();
-                return;
-            }
-            
-            // Continue the animation
-            requestAnimationFrame(updateStartButton);
-        }
     } catch (e) {
         console.error("Error drawing start button:", e);
         // Fallback drawing code
@@ -1524,7 +2044,7 @@ function updateStartButton() {
         buttonCtx.fillStyle = 'white';
         buttonCtx.font = '20px Arial';
         buttonCtx.textAlign = 'center';
-        buttonCtx.fillText('HOLD TO START', buttonCanvas.width/2, buttonCanvas.height/2 + 7);
+        buttonCtx.fillText('START GAME', buttonCanvas.width/2, buttonCanvas.height/2 + 7);
     }
 }
 function updateRestartButton() {
@@ -1547,17 +2067,12 @@ function updateRestartButton() {
     const buttonCtx = buttonCanvas.getContext('2d');
     buttonCtx.clearRect(0, 0, buttonCanvas.width, buttonCanvas.height);
     
-    // Calculate frame position in the sprite sheet
+    // Calculate frame position in the sprite sheet (2 frames vertically)
     const frameWidth = 670;
-    const frameHeight = 250;
+    const frameHeight = 248;
     
     try {
-        // Always draw frame 0 when not animating
-        if (!restartButtonAnimating) {
-            restartButtonFrame = 0;
-        }
-        
-        // Draw the current frame
+        // Draw the current frame (0 = up, 1 = down)
         buttonCtx.drawImage(
             window.startButtonImage,
             0, restartButtonFrame * frameHeight, 
@@ -1566,31 +2081,6 @@ function updateRestartButton() {
             buttonCanvas.width, buttonCanvas.height
         );
         
-        // If we're animating, update the frame
-        if (restartButtonAnimating) {
-            const elapsed = Date.now() - restartButtonTimer;
-            const progress = Math.min(elapsed / startButtonAnimationDuration, 1);
-            
-            // Map progress (0-1) to frames (1-16)
-            const targetFrame = Math.min(Math.floor(progress * 15) + 1, 16);
-            
-            // Update frame if it changed
-            if (targetFrame !== restartButtonFrame) {
-                restartButtonFrame = targetFrame;
-                console.log("Restart button frame:", restartButtonFrame);
-            }
-            
-            // If animation completed, restart the game
-            if (progress >= 1) {
-                console.log("Restart button animation complete, restarting game");
-                restartButtonAnimating = false;
-                restartGame();
-                return;
-            }
-            
-            // Continue the animation
-            requestAnimationFrame(updateRestartButton);
-        }
     } catch (e) {
         console.error("Error drawing restart button:", e);
         // Fallback if drawing fails
@@ -1599,7 +2089,7 @@ function updateRestartButton() {
         buttonCtx.fillStyle = 'white';
         buttonCtx.font = '20px Arial';
         buttonCtx.textAlign = 'center';
-        buttonCtx.fillText('HOLD TO RESTART', buttonCanvas.width/2, buttonCanvas.height/2 + 7);
+        buttonCtx.fillText('RESTART GAME', buttonCanvas.width/2, buttonCanvas.height/2 + 7);
     }
 }
 function createExplosion(x, y, size = 1.0) {
@@ -1678,8 +2168,8 @@ function endGame() {
                 centerY: groupCenterY,
                 radius: radius,
                 angle: 0,
-                rotationSpeed: 0.005,
-                moveSpeed: 0.3,
+                rotationSpeed: 0.012,
+                moveSpeed: 0.5,
                 members: []
             };
             // Spawn 10 enemies in a circle
@@ -2054,35 +2544,39 @@ function updateBullets() {
         }
         
         // Check for boss hit
-        if (boss && checkCollision(bullet, {
-            x: boss.x - boss.width/2,
-            y: boss.y - boss.height/2,
-            width: boss.width,
-            height: boss.height
-        })) {
-            boss.hp--;
-			// Create a small explosion where the bullet hit
+		if (boss && checkCollision(bullet, {
+			x: boss.x - boss.width/2,
+			y: boss.y - boss.height/2,
+			width: boss.width,
+			height: boss.height
+		})) {
+			// Create a small explosion where the bullet hit regardless of invulnerability
 			createExplosion(bullet.x, bullet.y, 0.4);
-            player.bullets.splice(i, 1);
-            
-            // Boss death
-            if (boss.hp <= 0) {
-                // Start explosion animation instead of instant damage
-                explosionAnimation = {
-                    centerX: boss.x,
-                    centerY: boss.y,
-                    radius: 10,
-                    startTime: Date.now(),
-                    duration: 5000, // 5 seconds
-                    completed: false
-                };
-                
-                boss = null;
-                score += 1000; // Big points for defeating boss
-                continue;
-            }
-            continue;
-        }
+			player.bullets.splice(i, 1);
+			
+			// Only damage the boss if not invulnerable
+			if (!boss.invulnerable) {
+				boss.hp--;
+				
+				// Boss death
+				if (boss.hp <= 0) {
+					// Start explosion animation instead of instant damage
+					explosionAnimation = {
+						centerX: boss.x,
+						centerY: boss.y,
+						radius: 10,
+						startTime: Date.now(),
+						duration: 5000, // 5 seconds
+						completed: false
+					};
+					
+					boss = null;
+					score += 1000; // Big points for defeating boss
+					continue;
+				}
+			}
+			continue;
+}
         
         // Regular enemy hit check
         // Regular enemy hit check
@@ -2140,13 +2634,16 @@ function updateEnemyBullets() {
             continue;
         }
         
-        // Check player collision with bullet
-        if (!playerInvulnerable && checkCollision(bullet, {
-			x: player.x - player.size/2,
-			y: player.y - player.size/2,
-			width: player.size,
-			height: player.size
-		})) {
+        // Calculate actual hitbox size for player
+	const playerHitboxSize = player.size * player.hitboxRatio;
+	
+	// Check player collision with bullet using adjusted hitbox
+	if (!playerInvulnerable && checkCollision(bullet, {
+	    x: player.x - playerHitboxSize/2,
+	    y: player.y - playerHitboxSize/2,
+	    width: playerHitboxSize,
+	    height: playerHitboxSize
+	})) {
 			// Check if shield is active
 			if (shieldActive) {
 				// Shield absorbs the hit
@@ -2357,12 +2854,17 @@ function updateEnemyBullets() {
 					}
 				}
 				
-				// Check for collision with player for all enemy types
+				// Calculate actual hitbox size
+				const playerHitboxSize = player.size * player.hitboxRatio;
+				// Use hitbox center offset to keep hitbox centered within the sprite
+				const playerHitboxOffset = (player.size - playerHitboxSize) / 2;
+				
+				// Check for collision with player's adjusted hitbox
 				if (!playerInvulnerable && checkCollision(enemy, {
-					x: player.x - player.size/2,
-					y: player.y - player.size/2,
-					width: player.size,
-					height: player.size
+				    x: player.x - playerHitboxSize/2,
+				    y: player.y - playerHitboxSize/2,
+				    width: playerHitboxSize,
+				    height: playerHitboxSize
 				})) {
 					// Calculate damage based on enemy type
 					let damage = 10; // Default damage
@@ -2570,31 +3072,17 @@ function update() {
 		}
 	}
     
-    // Check for boss spawn at 3:30 (210 seconds)
-    if (gameTime >= 210 && !bossSpawned) {
-        // Stop enemy spawning 9 seconds before boss appears
-        regularEnemiesDisabled = true;
-    }
+    // Stop spawning regular enemies at 185 seconds
+	if (gameTime >= 185 && !regularEnemiesDisabled) {
+		regularEnemiesDisabled = true;
+		console.log("Regular enemies disabled at time: " + gameTime);
+	}
 
-    if (gameTime >= 200 && !bossSpawned) {
-        // Clear all existing enemies
-        enemies.length = 0;
-        enemyBullets.length = 0;
-        circularGroup = null;
-        
-        // Spawn boss
-        spawnBoss();
-    }
-    const powerupMilestones = [500, 1500, 3000, 5000];
-    // Check for powerup milestones but only spawn if no powerup is currently active
-	for (let i = 0; i < powerupMilestones.length; i++) {
-		if (score >= powerupMilestones[i] && !reachedMilestones[i] && !powerup) {
-			// Spawn at a random position at top of screen
-			const randomX = Math.random() * (canvas.width - 60) + 30;
-			spawnPowerup(randomX, -30);
-			reachedMilestones[i] = true;
-			break; // Only spawn one powerup at a time
-		}
+	// Spawn boss at 190 seconds, without clearing existing enemies
+	if (gameTime >= 190 && !bossSpawned) {
+		// Spawn boss without clearing enemies
+		spawnBoss();
+		console.log("Boss spawned at time: " + gameTime);
 	}
 
     // Update powerup position and check for collection
@@ -2654,10 +3142,63 @@ function update() {
     updateStars();
     
     // Update and draw boss if it exists
-    if (boss) {
-        updateBoss();
-        drawBoss();
-    }
+	if (boss) {
+		updateBoss();
+		drawBoss();
+		
+		if (boss.laserActive && checkLaserCollision()) {
+			// Check if shield is active
+			if (shieldActive) {
+				// Shield absorbs the laser hit
+				shieldActive = false;
+				createExplosion(player.x, player.y, 0.8); // Shield break effect
+				
+				// Screen flash for shield break
+				ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+			} else {
+				// No shield, take damage normally
+				player.hp -= boss.laserDamage;
+				hpElement.textContent = player.hp;
+				
+				// Severe visual feedback for laser damage
+				// Red screen flash
+				ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				
+				// Screen shake effect
+				canvas.style.transform = `translate(${(Math.random() - 0.5) * 10}px, ${(Math.random() - 0.5) * 10}px)`;
+				setTimeout(() => {
+					canvas.style.transform = 'translate(0px, 0px)';
+				}, 100);
+			}
+			
+			// Always create explosion for laser hits
+			createExplosion(player.x, player.y, 0.5);
+			
+			// Check for player death
+			if (player.hp <= 0) {
+				endGame();
+			}
+		}
+		
+		if (boss.laserCooldown) {
+			// Visual feedback for cooldown
+			const cooldownProgress = (now - boss.laserCooldownTimer) / boss.laserCooldownDuration;
+			
+			// Steam/smoke effect
+			if (Math.random() < 0.1) {
+				// Create small explosions around boss to simulate cooling down
+				const angle = Math.random() * Math.PI * 2;
+				const distance = Math.random() * boss.width/2;
+				createExplosion(
+					boss.x + Math.cos(angle) * distance,
+					boss.y + Math.sin(angle) * distance,
+					0.2
+				);
+			}
+		}
+	}
 
     drawStars();
     
@@ -2682,9 +3223,18 @@ function update() {
 		// Only apply controls after intro sequence is complete
 		// Touch/mouse follow controls
 		if (typeof mouseX !== 'undefined' && typeof mouseY !== 'undefined') {
-			// Smoothly interpolate toward touch/mouse position
-			player.x = player.x + (mouseX - player.x) * 0.2;
-			player.y = player.y + (mouseY - player.y) * 0.2;
+			// Calculate target position with mobile offset
+			let targetX = mouseX;
+			let targetY = mouseY;
+			
+			// Add upward offset on mobile to keep player visible above thumb
+			if (isMobile) {
+				targetY = mouseY - 50; // Move player 80 pixels above touch point
+			}
+			
+			// Smoothly interpolate toward target position
+			player.x = player.x + (targetX - player.x) * 0.2;
+			player.y = player.y + (targetY - player.y) * 0.2;
 		}
 		
 		// Always shoot when player is ready
