@@ -1101,7 +1101,7 @@ function initializeMusic() {
         // Set up seamless looping by detecting near-end
 		backgroundMusic.addEventListener('timeupdate', function() {
 			// If we're within 1 second of the end, restart earlier for seamless loop
-			if (this.duration - this.currentTime < 10.0) {
+			if (this.duration - this.currentTime < 2.0) {
 				this.currentTime = 0;
 			}
 		});
